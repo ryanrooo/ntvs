@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>North Texas Volleyball Stats</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="hero">
+    <div class="hero__content">
+      <p class="eyebrow">North Texas Volleyball</p>
+      <h1>Club stats, organized in one place.</h1>
+      <p class="subtitle">Track clubs, players, and match performance with quick exports for your spreadsheet workflow.</p>
+      <div class="hero__actions">
+        <a class="button primary" href="#club-section">Add a club</a>
+        <a class="button secondary" href="#player-section">Add a player</a>
+      </div>
+    </div>
+    <div class="hero__card">
+      <p class="card-title">Stats snapshot</p>
+      <div class="stat-grid">
+        <div class="stat">
+          <span class="stat__label">Clubs</span>
+          <span class="stat__value" id="hero-club-count">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat__label">Players</span>
+          <span class="stat__value" id="hero-player-count">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat__label">Exports</span>
+          <span class="stat__value">CSV ready</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="club-section" class="panel">
+      <div class="panel__header">
+        <div>
+          <p class="eyebrow">Clubs</p>
+          <h2>Add or manage clubs</h2>
+          <p class="subtitle">Create clubs first, then connect players. Everything stays in your browser.</p>
+        </div>
+        <button class="button tertiary" id="reset-data">Reset data</button>
+      </div>
+      <form id="club-form" class="form-grid">
+        <label>
+          Club name
+          <input type="text" id="club-name" name="clubName" required placeholder="e.g. North Stars" />
+        </label>
+        <label>
+          Division / age
+          <input type="text" id="club-division" name="clubDivision" placeholder="e.g. 16U" />
+        </label>
+        <button type="submit" class="button primary">Add club</button>
+      </form>
+      <div id="club-list" class="list-grid" aria-live="polite"></div>
+    </section>
+
+    <section id="player-section" class="panel">
+      <div class="panel__header">
+        <div>
+          <p class="eyebrow">Players</p>
+          <h2>Add players</h2>
+          <p class="subtitle">Assign players to clubs and track jersey numbers and positions.</p>
+        </div>
+      </div>
+      <form id="player-form" class="form-grid">
+        <label>
+          Player name
+          <input type="text" id="player-name" name="playerName" required placeholder="e.g. Taylor Nguyen" />
+        </label>
+        <label>
+          Jersey #
+          <input type="number" id="player-number" name="playerNumber" min="0" required />
+        </label>
+        <label>
+          Position
+          <input type="text" id="player-position" name="playerPosition" placeholder="e.g. OH" />
+        </label>
+        <label>
+          Club
+          <select id="player-club" name="playerClub" required>
+            <option value="" disabled selected>Select a club</option>
+          </select>
+        </label>
+        <button type="submit" class="button primary">Add player</button>
+      </form>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Club</th>
+              <th>#</th>
+              <th>Position</th>
+              <th>Kills</th>
+              <th>Digs</th>
+              <th>Aces</th>
+              <th>Blocks</th>
+              <th>Assists</th>
+            </tr>
+          </thead>
+          <tbody id="player-table-body" aria-live="polite"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="export-section" class="panel">
+      <div class="panel__header">
+        <div>
+          <p class="eyebrow">Stats export</p>
+          <h2>Export or import CSV</h2>
+          <p class="subtitle">Download a stat-ready sheet for your records, or import updates from your spreadsheet.</p>
+        </div>
+      </div>
+      <div class="export-actions">
+        <button class="button primary" id="export-csv">Export CSV</button>
+        <label class="button secondary file-label" for="import-csv">Import CSV</label>
+        <input type="file" id="import-csv" accept="text/csv" />
+      </div>
+      <p class="help-text">CSV columns: Club, Player, Jersey, Position, Kills, Digs, Aces, Blocks, Assists</p>
+      <pre id="export-preview" class="code-block" aria-live="polite"></pre>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>North Texas Volleyball Stats — built for streamlined club reporting.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
