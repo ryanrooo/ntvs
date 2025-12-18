@@ -3,222 +3,279 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>North Texas Club Volleyball Stats</title>
+  <title>North Texas Volleyball Stats</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="site-header">
-    <div class="logo">NTX Club Stats</div>
+    <div class="logo">North Texas Volleyball</div>
     <nav class="nav">
-      <a href="#clubs">Clubs</a>
-      <a href="#players">Players</a>
-      <a href="#metrics">Metrics</a>
-      <button class="primary-btn">Download PDF</button>
+      <a href="#stats">Stats</a>
+      <a href="#schedule">Schedule</a>
+      <a href="#roster">Roster</a>
+      <a href="#insights">Insights</a>
+      <button class="primary-btn">Download Report</button>
     </nav>
   </header>
 
   <main>
     <section class="hero">
       <div class="hero__content">
-        <p class="eyebrow">Girls Junior Club • USAV North Texas</p>
-        <h1>Clean, clear stats for every club in North Texas.</h1>
-        <p class="lede">Built for club directors, coaches, and families who want simple, trustworthy numbers on rotations, serve pressure, and player impact—no college jargon, just the data that matters for club volleyball.</p>
+        <p class="eyebrow">2024 Season Analytics</p>
+        <h1>North Texas Volleyball Stats</h1>
+        <p class="lede">A modern hub for everything Mean Green volleyball—match momentum, roster leaders, and the numbers that define our season.</p>
         <div class="hero__actions">
-          <button class="primary-btn">View Club Report</button>
-          <button class="ghost-btn">Share Snapshot</button>
+          <button class="primary-btn">View Live Dashboard</button>
+          <button class="ghost-btn">Share with Staff</button>
         </div>
-        <div class="club-ticker" id="club-ticker" aria-live="polite"></div>
-      </div>
-      <div class="summary-card">
-        <div class="summary__row">
+        <div class="hero__metrics">
           <div>
-            <p class="label">Rotation Side-Out</p>
-            <strong>64%</strong>
-            <p class="micro">Across 15U–18U datasets</p>
-          </div>
-          <div class="divider"></div>
-          <div>
-            <p class="label">Serve Pressure</p>
-            <strong>1.18</strong>
-            <p class="micro">Ace-to-error ratio</p>
-          </div>
-        </div>
-        <div class="summary__grid">
-          <div>
-            <p class="label">Dig Conversion</p>
-            <h3>42%</h3>
-            <p class="subtext">Transition kills from defensive digs.</p>
+            <span class="label">Match Win %</span>
+            <strong>73%</strong>
           </div>
           <div>
-            <p class="label">Passing Window</p>
-            <h3>2.38</h3>
-            <p class="subtext">Average serve-receive rating vs. top brackets.</p>
+            <span class="label">Sets Won</span>
+            <strong>48</strong>
           </div>
           <div>
-            <p class="label">Tempo Wins</p>
-            <h3>0.92s</h3>
-            <p class="subtext">Ball-to-attack tempo on first-ball swings.</p>
+            <span class="label">Avg. Attack %</span>
+            <strong>.274</strong>
           </div>
         </div>
       </div>
-    </section>
-
-    <section id="clubs" class="section light">
-      <div class="section__header">
-        <div>
-          <p class="eyebrow">Club Snapshot</p>
-          <h2>North Texas clubs on rotation</h2>
-          <p class="lede">Cycling through names you know—tap into quick metrics without digging through spreadsheets.</p>
+      <div class="hero__card">
+        <div class="card__header">
+          <div>
+            <p class="label">Next Match</p>
+            <h3>NTX vs. SMU</h3>
+          </div>
+          <span class="badge">Conference</span>
         </div>
-        <div class="pill-group">
-          <span class="pill">15U–18U</span>
-          <span class="pill">USAV Region</span>
-          <span class="pill">Girls</span>
-        </div>
-      </div>
-      <div class="grid grid-3">
-        <div class="tile">
-          <p class="label">Side-Out Efficiency</p>
-          <h3>0.71</h3>
-          <p class="subtext">Mean across high-leverage rotations for top brackets.</p>
-        </div>
-        <div class="tile">
-          <p class="label">Serve-Run Length</p>
-          <h3>3.2 pts</h3>
-          <p class="subtext">Average consecutive points on primary server rotations.</p>
-        </div>
-        <div class="tile">
-          <p class="label">Block Touches</p>
-          <h3>5.4 / set</h3>
-          <p class="subtext">Hands on high balls that convert to digs and kills.</p>
+        <div class="card__body">
+          <div class="score-row">
+            <div class="team">
+              <span class="avatar">NT</span>
+              <div>
+                <p class="team-name">North Texas</p>
+                <p class="subtext">Mean Green</p>
+              </div>
+            </div>
+            <p class="score">24-7</p>
+          </div>
+          <div class="score-row">
+            <div class="team">
+              <span class="avatar opponent">SM</span>
+              <div>
+                <p class="team-name">SMU</p>
+                <p class="subtext">Mustangs</p>
+              </div>
+            </div>
+            <p class="score">21-9</p>
+          </div>
+          <div class="chart">
+            <div class="bar" style="width: 78%"></div>
+            <div class="bar opponent" style="width: 62%"></div>
+          </div>
+          <p class="micro">Momentum index based on serve-run efficiency & first ball side-out.</p>
         </div>
       </div>
     </section>
 
-    <section id="metrics" class="section">
+    <section id="stats" class="section stats">
       <div class="section__header">
         <div>
-          <p class="eyebrow">Simple dashboards</p>
-          <h2>Serve, side-out, and swing data at a glance</h2>
-          <p class="lede">Small multiples make it easy to compare club tendencies—no clutter, all signal.</p>
+          <p class="eyebrow">Season Snapshot</p>
+          <h2>Performance Highlights</h2>
+          <p class="lede">Quick-glance trends that tell the story of the season so far.</p>
         </div>
         <button class="ghost-btn">Export CSV</button>
       </div>
       <div class="grid grid-3">
-        <div class="metric-card">
-          <p class="label">Serve Targeting</p>
-          <h3>Deep 1 / Short 5</h3>
-          <p class="subtext">Most effective patterns versus heavy outside offenses.</p>
-          <div class="bar-stack">
-            <span class="bar" style="width: 64%"></span>
-            <span class="bar soft" style="width: 32%"></span>
+        <div class="tile">
+          <p class="label">Kill Efficiency</p>
+          <h3>.312</h3>
+          <p class="subtext">Top 3 in the conference, driven by a 43% first-ball kill rate.</p>
+          <div class="spark">
+            <div class="spark-bar" style="width: 70%"></div>
           </div>
         </div>
-        <div class="metric-card">
-          <p class="label">Transition Kill %</p>
-          <h3>38%</h3>
-          <p class="subtext">Kills from digs after serve or free ball.</p>
-          <div class="bar-stack">
-            <span class="bar" style="width: 52%"></span>
-            <span class="bar soft" style="width: 28%"></span>
+        <div class="tile">
+          <p class="label">Blocks / Set</p>
+          <h3>2.7</h3>
+          <p class="subtext">Middle duo closing lanes—opponents hitting just .188.</p>
+          <div class="spark neutral">
+            <div class="spark-bar" style="width: 55%"></div>
           </div>
         </div>
-        <div class="metric-card">
-          <p class="label">First-Ball Kill</p>
-          <h3>46%</h3>
-          <p class="subtext">Attack points on perfect or good passes.</p>
-          <div class="bar-stack">
-            <span class="bar" style="width: 68%"></span>
-            <span class="bar soft" style="width: 18%"></span>
+        <div class="tile">
+          <p class="label">Ace-to-Error Ratio</p>
+          <h3>1.42</h3>
+          <p class="subtext">Pressure from the service line creates easy transition swings.</p>
+          <div class="spark success">
+            <div class="spark-bar" style="width: 82%"></div>
           </div>
         </div>
       </div>
     </section>
 
-    <section id="players" class="section light">
+    <section id="insights" class="section insights">
       <div class="section__header">
         <div>
-          <p class="eyebrow">Player Impact</p>
-          <h2>Club leaders driving the numbers</h2>
-          <p class="lede">Spotlight key contributors across setters, outsides, and middles.</p>
+          <p class="eyebrow">Tactical Insights</p>
+          <h2>Where We Win Points</h2>
+          <p class="lede">Serve pressure fuels transition; middle-first tempo keeps defenses off balance.</p>
         </div>
-        <button class="primary-btn">Full Player List</button>
+        <div class="pill-group">
+          <span class="pill">Serve Runs</span>
+          <span class="pill">First Ball Side-Out</span>
+          <span class="pill">Transition Kill %</span>
+        </div>
+      </div>
+      <div class="insights__grid">
+        <div class="insight-card">
+          <p class="label">Rotation Edge</p>
+          <h3>R6 &amp; R2</h3>
+          <p class="subtext">+12 average run points with libero in zone 5 and OPP float serve to seams.</p>
+        </div>
+        <div class="insight-card">
+          <p class="label">Tempo Mix</p>
+          <h3>0.9s</h3>
+          <p class="subtext">Quick-tempo to the middle cuts block time and raises kill rate above 48%.</p>
+        </div>
+        <div class="insight-card">
+          <p class="label">Coverage Efficiency</p>
+          <h3>78%</h3>
+          <p class="subtext">Recycles extend rallies and convert to kills on third contact 32% of the time.</p>
+        </div>
+        <div class="insight-card">
+          <p class="label">Serve Targeting</p>
+          <h3>14 aces</h3>
+          <p class="subtext">Jump-float to deep 1 forces high passes and predictable high-ball swings.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="roster" class="section roster">
+      <div class="section__header">
+        <div>
+          <p class="eyebrow">Players to Watch</p>
+          <h2>Leaders &amp; Rotation Anchors</h2>
+          <p class="lede">Impact players driving the numbers.</p>
+        </div>
+        <button class="primary-btn">Full Roster</button>
       </div>
       <div class="grid grid-3">
         <div class="player-card">
           <div class="player__header">
-            <span class="avatar">S</span>
-            <div>
-              <p class="player-name">Maya Lin</p>
-              <p class="label">Setter • 17U</p>
-            </div>
-          </div>
-          <div class="player__stats">
-            <div>
-              <p class="label">Assists / Set</p>
-              <strong>10.1</strong>
-            </div>
-            <div>
-              <p class="label">Tempo</p>
-              <strong>0.90s</strong>
-            </div>
-            <div>
-              <p class="label">Run Length</p>
-              <strong>+8</strong>
-            </div>
-          </div>
-          <p class="subtext">Fast tempo with clean release keeps middles live every rotation.</p>
-        </div>
-        <div class="player-card">
-          <div class="player__header">
             <span class="avatar">OH</span>
             <div>
-              <p class="player-name">Avery Cole</p>
-              <p class="label">Outside • 16U</p>
+              <p class="player-name">Jordan Ellis</p>
+              <p class="label">Outside Hitter • Junior</p>
             </div>
           </div>
           <div class="player__stats">
             <div>
               <p class="label">Kills / Set</p>
-              <strong>3.9</strong>
+              <strong>4.1</strong>
             </div>
             <div>
               <p class="label">Attack %</p>
-              <strong>.286</strong>
+              <strong>.292</strong>
             </div>
             <div>
-              <p class="label">Passing</p>
-              <strong>2.45</strong>
+              <p class="label">Serve Runs</p>
+              <strong>9</strong>
             </div>
           </div>
-          <p class="subtext">Reliable six-rotation arm with serve-receive stability.</p>
+          <p class="subtext">Terminal on the pin with a heavy top-spin from the service line.</p>
         </div>
         <div class="player-card">
           <div class="player__header">
             <span class="avatar">MB</span>
             <div>
-              <p class="player-name">Jordan Reyes</p>
-              <p class="label">Middle • 18U</p>
+              <p class="player-name">Kai Monroe</p>
+              <p class="label">Middle Blocker • Senior</p>
             </div>
           </div>
           <div class="player__stats">
             <div>
               <p class="label">Blocks / Set</p>
-              <strong>1.3</strong>
+              <strong>1.4</strong>
             </div>
             <div>
-              <p class="label">Slide Kill %</p>
-              <strong>52%</strong>
+              <p class="label">Attack %</p>
+              <strong>.358</strong>
             </div>
             <div>
               <p class="label">Aces</p>
-              <strong>26</strong>
+              <strong>21</strong>
             </div>
           </div>
-          <p class="subtext">Reads pin hitters early and adds pressure with a flat float serve.</p>
+          <p class="subtext">Quick slide threat; closes seams on read blocks with elite footwork.</p>
+        </div>
+        <div class="player-card">
+          <div class="player__header">
+            <span class="avatar">S</span>
+            <div>
+              <p class="player-name">Riley Tran</p>
+              <p class="label">Setter • Sophomore</p>
+            </div>
+          </div>
+          <div class="player__stats">
+            <div>
+              <p class="label">Assists / Set</p>
+              <strong>10.8</strong>
+            </div>
+            <div>
+              <p class="label">Dig Conv.</p>
+              <strong>61%</strong>
+            </div>
+            <div>
+              <p class="label">+/-</p>
+              <strong>+17</strong>
+            </div>
+          </div>
+          <p class="subtext">Run-and-jump setter spreading tempo with strong back-row attack connections.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="schedule" class="section schedule">
+      <div class="section__header">
+        <div>
+          <p class="eyebrow">Upcoming</p>
+          <h2>Conference Schedule</h2>
+          <p class="lede">Key matches with projected impact on standings.</p>
+        </div>
+        <button class="ghost-btn">Add to Calendar</button>
+      </div>
+      <div class="schedule__list">
+        <div class="schedule__item">
+          <div>
+            <p class="label">Fri • Oct 4</p>
+            <p class="match">@ Louisiana Tech</p>
+            <p class="subtext">Swing momentum game; focuses on serve-target seams.</p>
+          </div>
+          <span class="pill">Win Prob 68%</span>
+        </div>
+        <div class="schedule__item">
+          <div>
+            <p class="label">Sat • Oct 12</p>
+            <p class="match">vs. UAB</p>
+            <p class="subtext">Home stretch with strong block-defend strategy.</p>
+          </div>
+          <span class="pill">Home Sweep</span>
+        </div>
+        <div class="schedule__item">
+          <div>
+            <p class="label">Thu • Oct 17</p>
+            <p class="match">vs. Rice</p>
+            <p class="subtext">Top-25 showdown—serve receive focus, extended rallies expected.</p>
+          </div>
+          <span class="pill highlight">Marquee</span>
         </div>
       </div>
     </section>
@@ -226,43 +283,16 @@
 
   <footer class="footer">
     <div>
-      <p class="logo">North Texas Club Stats</p>
-      <p class="subtext">A clean, white-forward dashboard for the North Texas girls club scene.</p>
+      <p class="logo">Mean Green Analytics</p>
+      <p class="subtext">Built for coaches, athletes, and fans who want the story behind every rally.</p>
     </div>
     <div class="footer__cta">
-      <p class="label">Stay updated</p>
+      <p class="label">Stay synced to every set</p>
       <div class="input-group">
         <input type="email" placeholder="Enter your email" />
         <button class="primary-btn">Subscribe</button>
       </div>
     </div>
   </footer>
-
-  <script>
-    const clubs = [
-      "Madfrog Volleyball",
-      "Skyline Juniors",
-      "TAV North",
-      "Dallas Premier",
-      "Drive Nation Volleyball",
-      "Tejas Volleyball",
-      "Arete Athletics",
-      "Excel Volleyball Club",
-      "Frisco Flyers",
-      "Blocksport Volleyball",
-      "Instinct Volleyball"
-    ];
-
-    const ticker = document.getElementById('club-ticker');
-    let clubIndex = 0;
-
-    function cycleClubNames() {
-      ticker.textContent = `Featuring: ${clubs[clubIndex]}`;
-      clubIndex = (clubIndex + 1) % clubs.length;
-    }
-
-    cycleClubNames();
-    setInterval(cycleClubNames, 2500);
-  </script>
 </body>
 </html>

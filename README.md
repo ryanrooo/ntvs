@@ -1,3 +1,3 @@
 # NTVS
 
-A clean, white-forward landing page for North Texas girls club volleyball stats—featuring rotating local club names, simple rotation metrics, and quick player spotlights. Open `index.html` in a browser to view the experience.
+A static landing page for North Texas Volleyball Stats highlighting 2024 season analytics, player leaders, and schedule snapshots. Open `index.html` in a browser to view the experience.
