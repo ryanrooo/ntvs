@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>North Texas Club Volleyball Stats</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <span class="brand__dot"></span>
+      <span class="brand__name">NTX Club Stats</span>
+    </div>
+    <nav class="nav">
+      <a href="#clubs">Clubs</a>
+      <a href="#players">Players</a>
+      <a href="#metrics">Metrics</a>
+      <button class="primary">Download Report</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero__content">
+        <p class="eyebrow">North Texas • Junior Girls • USAV</p>
+        <h1>White-glove stats for every club—without the clutter.</h1>
+        <p class="lede">Built for directors, coaches, and families who just want crisp rotation, serve, and player impact numbers across the North Texas club scene.</p>
+        <div class="actions">
+          <button class="primary">View club dashboard</button>
+          <button class="ghost">Share snapshot</button>
+        </div>
+        <div class="ticker" id="club-ticker" aria-live="polite"></div>
+      </div>
+      <div class="panel">
+        <div class="panel__row">
+          <div>
+            <p class="label">Side-out rate</p>
+            <h3>64%</h3>
+            <p class="micro">Across 15U–18U rotations</p>
+          </div>
+          <div class="divider"></div>
+          <div>
+            <p class="label">Serve pressure</p>
+            <h3>1.18</h3>
+            <p class="micro">Ace-to-error ratio</p>
+          </div>
+        </div>
+        <div class="panel__grid">
+          <div>
+            <p class="label">First-ball kill</p>
+            <strong>46%</strong>
+            <p class="subtext">Attack points on perfect passes.</p>
+          </div>
+          <div>
+            <p class="label">Block touch</p>
+            <strong>5.4 / set</strong>
+            <p class="subtext">Hands on high balls converting to digs.</p>
+          </div>
+          <div>
+            <p class="label">Tempo</p>
+            <strong>0.92s</strong>
+            <p class="subtext">Ball-to-attack timing on first swings.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="clubs" class="section">
+      <div class="section__header">
+        <div>
+          <p class="eyebrow">Club overview</p>
+          <h2>North Texas clubs on rotation</h2>
+          <p class="lede">A clean snapshot of how clubs side-out, apply pressure, and convert transition swings.</p>
+        </div>
+        <div class="pills">
+          <span class="pill">15U–18U</span>
+          <span class="pill">Girls</span>
+          <span class="pill">USAV Region</span>
+        </div>
+      </div>
+      <div class="grid grid-3">
+        <article class="card">
+          <p class="label">Side-out efficiency</p>
+          <h3>0.71</h3>
+          <p class="subtext">Mean across primary rotations in top brackets.</p>
+        </article>
+        <article class="card">
+          <p class="label">Serve run length</p>
+          <h3>3.2 pts</h3>
+          <p class="subtext">Average consecutive points with top two servers.</p>
+        </article>
+        <article class="card">
+          <p class="label">Dig-to-kill</p>
+          <h3>42%</h3>
+          <p class="subtext">Transition kills after controlled digs.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="metrics" class="section section--muted">
+      <div class="section__header">
+        <div>
+          <p class="eyebrow">Quick reads</p>
+          <h2>Serve, side-out, and swing data at a glance</h2>
+          <p class="lede">Small multiples and white space keep the view clean while you compare club tendencies.</p>
+        </div>
+        <button class="ghost">Export CSV</button>
+      </div>
+      <div class="grid grid-3">
+        <article class="metric">
+          <div class="metric__head">
+            <p class="label">Serve targeting</p>
+            <span class="chip">deep 1 / short 5</span>
+          </div>
+          <p class="subtext">Most effective patterns versus heavy outside offenses.</p>
+          <div class="bar">
+            <span style="width: 64%"></span>
+            <span class="bar--soft" style="width: 32%"></span>
+          </div>
+        </article>
+        <article class="metric">
+          <div class="metric__head">
+            <p class="label">Transition kill %</p>
+            <span class="chip">38%</span>
+          </div>
+          <p class="subtext">Kills from digs after serve or free ball.</p>
+          <div class="bar">
+            <span style="width: 52%"></span>
+            <span class="bar--soft" style="width: 28%"></span>
+          </div>
+        </article>
+        <article class="metric">
+          <div class="metric__head">
+            <p class="label">Perfect pass kill</p>
+            <span class="chip">+18%</span>
+          </div>
+          <p class="subtext">Lift in kill rate on 3-pass vs. system passes.</p>
+          <div class="bar">
+            <span style="width: 68%"></span>
+            <span class="bar--soft" style="width: 18%"></span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="players" class="section">
+      <div class="section__header">
+        <div>
+          <p class="eyebrow">Player impact</p>
+          <h2>Club leaders moving the numbers</h2>
+          <p class="lede">Spotlight high-impact setters, outsides, and middles across age groups.</p>
+        </div>
+        <button class="primary">Full player list</button>
+      </div>
+      <div class="grid grid-3">
+        <article class="person">
+          <div class="person__head">
+            <span class="avatar">S</span>
+            <div>
+              <p class="name">Maya Lin</p>
+              <p class="label">Setter • 17U</p>
+            </div>
+          </div>
+          <div class="person__metrics">
+            <div>
+              <p class="label">Assists / set</p>
+              <strong>10.1</strong>
+            </div>
+            <div>
+              <p class="label">Tempo</p>
+              <strong>0.90s</strong>
+            </div>
+            <div>
+              <p class="label">Run length</p>
+              <strong>+8</strong>
+            </div>
+          </div>
+          <p class="subtext">Fast tempo with clean release keeps middles live every rotation.</p>
+        </article>
+        <article class="person">
+          <div class="person__head">
+            <span class="avatar">OH</span>
+            <div>
+              <p class="name">Avery Cole</p>
+              <p class="label">Outside • 16U</p>
+            </div>
+          </div>
+          <div class="person__metrics">
+            <div>
+              <p class="label">Kills / set</p>
+              <strong>3.9</strong>
+            </div>
+            <div>
+              <p class="label">Attack %</p>
+              <strong>.286</strong>
+            </div>
+            <div>
+              <p class="label">Passing</p>
+              <strong>2.45</strong>
+            </div>
+          </div>
+          <p class="subtext">Reliable six-rotation arm with serve-receive stability.</p>
+        </article>
+        <article class="person">
+          <div class="person__head">
+            <span class="avatar">MB</span>
+            <div>
+              <p class="name">Jordan Reyes</p>
+              <p class="label">Middle • 18U</p>
+            </div>
+          </div>
+          <div class="person__metrics">
+            <div>
+              <p class="label">Blocks / set</p>
+              <strong>1.3</strong>
+            </div>
+            <div>
+              <p class="label">Slide kill %</p>
+              <strong>52%</strong>
+            </div>
+            <div>
+              <p class="label">Aces</p>
+              <strong>26</strong>
+            </div>
+          </div>
+          <p class="subtext">Reads pin hitters early and adds pressure with a flat float serve.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div>
+      <p class="brand__name">North Texas Club Stats</p>
+      <p class="subtext">A clean, white-forward dashboard for the North Texas girls club scene.</p>
+    </div>
+    <div class="footer__cta">
+      <p class="label">Stay updated</p>
+      <div class="input-group">
+        <input type="email" placeholder="Enter your email" />
+        <button class="primary">Subscribe</button>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const clubs = [
+      "Madfrog Volleyball",
+      "Skyline Juniors",
+      "TAV North",
+      "Dallas Premier",
+      "Drive Nation Volleyball",
+      "Tejas Volleyball",
+      "Arete Athletics",
+      "Excel Volleyball Club",
+      "Frisco Flyers",
+      "Blocksport Volleyball",
+      "Instinct Volleyball"
+    ];
+
+    const ticker = document.getElementById('club-ticker');
+    let clubIndex = 0;
+
+    function cycleClubNames() {
+      ticker.textContent = `Featuring: ${clubs[clubIndex]}`;
+      ticker.classList.remove('ticker--fade');
+      requestAnimationFrame(() => {
+        ticker.classList.add('ticker--fade');
+      });
+      clubIndex = (clubIndex + 1) % clubs.length;
+    }
+
+    cycleClubNames();
+    setInterval(cycleClubNames, 2400);
+  </script>
+</body>
+</html>
