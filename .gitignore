@@ -1,0 +1,19 @@
+
+# Virtual Environments
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Logs
+app.log
+*.log
+
+# Project Data
+/data/
+
+# System
+.DS_Store
