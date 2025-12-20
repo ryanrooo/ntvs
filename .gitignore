@@ -17,3 +17,6 @@ app.log
 
 # System
 .DS_Store
+
+# Secrets
+.env
