@@ -5,6 +5,23 @@ import re
 import csv
 import sys
 import hashlib
+import os
+import logging
+
+# Ensure directories exist
+os.makedirs("data", exist_ok=True)
+os.makedirs("logs", exist_ok=True)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("logs/extract.log"),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # Base URL for VStar results
 BASE_URL = "https://results.vstarvolleyball.com"
@@ -27,7 +44,7 @@ def extract_club_name(team_name):
 
 def get_tournament_page(tournament_id):
     url = f"{BASE_URL}/index.php?id={tournament_id}"
-    print(f"Fetching tournament page: {url}")
+    logger.info(f"Fetching tournament page: {url}")
     response = requests.get(url, headers=HEADERS)
     if response.status_code != 200: return None
     return response.text
@@ -246,7 +263,11 @@ def main():
     # Tournaments List with YEAR
     tournaments_to_process = [
         ("kickoffclassic", "Kickoff Classic", "2025"),
-        ("bidwarmup1", "Bid Warm Up 1", "2025")
+        ("bidwarmup1", "Bid Warm Up 1", "2025"),
+        ("centexchallenge", "Centex Challenge", "2025"),
+        ("dallasfrozenfest", "Dallas Frozen Fest", "2025"),
+        ("northtexashomeopener", "North Texas Home Opener", "2025"),
+        ("fwkickoff", "FW Kickoff", "2025")
     ]
     
     db_tournaments = []
@@ -260,22 +281,22 @@ def main():
         db_tournament_id = f"{vstar_id}_{t_year}"
         full_name = f"{t_name} {t_year}"
         
-        print(f"Starting ETL for {full_name} ({db_tournament_id})...")
+        logger.info(f"Starting ETL for {full_name} ({db_tournament_id})...")
         
         db_tournaments.append({"tournament_id": db_tournament_id, "name": full_name})
         
         html = get_tournament_page(vstar_id)
         if not html:
-            print(f"Skipping {vstar_id}: No page found.")
+            logger.warning(f"Skipping {vstar_id}: No page found.")
             continue
 
         files = parse_result_links(html, vstar_id)
-        print(f"  Found {len(files)} result files.")
+        logger.info(f"  Found {len(files)} result files.")
         
         for f in files:
             # Pass BOTH IDs
             teams, pools, standings, matches = extract_pool_data_v2(vstar_id, db_tournament_id, f)
-            print(f"    Processed {f}: {len(teams)} teams, {len(matches)} matches.")
+            logger.info(f"    Processed {f}: {len(teams)} teams, {len(matches)} matches.")
             
             for t in teams:
                 if t['team_name'] not in db_teams:
@@ -287,34 +308,33 @@ def main():
             db_standings.extend(standings)
             db_matches.extend(matches)
         
-    print(f"Total Extracted: {len(db_teams)} Teams, {len(db_pools)} Pools, {len(db_matches)} Matches across {len(db_tournaments)} tournaments.")
-    
-    with open("db_tournaments.csv", 'w', newline='') as f:
+    with open("data/tournaments.csv", 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=["tournament_id", "name"])
         writer.writeheader()
         writer.writerows(db_tournaments)
         
-    with open("db_teams.csv", 'w', newline='') as f:
+    with open("data/teams.csv", 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=["team_name", "club_name", "division"])
         writer.writeheader()
         writer.writerows(list(db_teams.values()))
 
-    with open("db_pools.csv", 'w', newline='') as f:
+    with open("data/pools.csv", 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=["pool_id", "tournament_id", "division", "pool_name", "team_count"])
         writer.writeheader()
         writer.writerows(list(db_pools.values()))
         
-    with open("db_pool_standings.csv", 'w', newline='') as f:
+    with open("data/pool_standings.csv", 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=["pool_id", "team_name", "rank_seed", "matches_won", "matches_lost", "point_diff", "pool_finish"])
         writer.writeheader()
         writer.writerows(db_standings)
 
-    with open("db_match_results.csv", 'w', newline='') as f:
+    with open("data/match_results.csv", 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=["match_id", "pool_id", "team_name", "opponent_name", "outcome", "sets_won", "sets_lost", "score_log"])
         writer.writeheader()
         writer.writerows(db_matches)
         
-    print("Database CSVs generated: db_tournaments.csv, db_teams.csv, db_pools.csv, db_pool_standings.csv, db_match_results.csv")
+    logger.info(f"Total Extracted: {len(db_teams)} Teams, {len(db_pools)} Pools, {len(db_matches)} Matches across {len(db_tournaments)} tournaments.")
+    logger.info("Database CSVs generated in data/ folder.")
 
 if __name__ == "__main__":
     main()

@@ -9,10 +9,13 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# Ensure logs directory exists
+os.makedirs("logs", exist_ok=True)
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
-logger.addHandler(logging.FileHandler("app.log"))
+logger.addHandler(logging.FileHandler("logs/api.log"))
 
 logger.info("Starting application...")
 
