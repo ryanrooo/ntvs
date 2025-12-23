@@ -11,6 +11,7 @@ __pycache__/
 # Logs
 app.log
 *.log
+logs/
 
 # Project Data
 /data/

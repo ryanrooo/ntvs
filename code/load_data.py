@@ -32,30 +32,37 @@ def load_csv(cursor, file_path, table_name, columns, conflict_col):
         logger.warning(f"File not found: {file_path}")
         return
 
+    # Handle single or multiple conflict keys
+    conflict_keys = [k.strip() for k in conflict_col.split(",")]
+
     with open(file_path, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
             cols = ", ".join(columns)
             placeholders = ", ".join(["%s"] * len(columns))
-            updates = ", ".join([f"{col} = EXCLUDED.{col}" for col in columns if col != conflict_col])
             
-            sql = f"""
-                INSERT INTO ntvs.{table_name} ({cols})
-                VALUES ({placeholders})
-                ON CONFLICT ({conflict_col})
-                DO UPDATE SET {updates};
-            """
+            # Only update columns that are NOT part of the primary key
+            update_cols = [col for col in columns if col not in conflict_keys]
+            updates = ", ".join([f"{col} = EXCLUDED.{col}" for col in update_cols])
             
-            # Simple handle for multi-key conflicts if needed, but for now assuming single key as per schema
-            if "," in conflict_col:
-                 sql = f"""
+            if updates:
+                sql = f"""
                     INSERT INTO ntvs.{table_name} ({cols})
                     VALUES ({placeholders})
                     ON CONFLICT ({conflict_col})
                     DO UPDATE SET {updates};
                 """
+            else:
+                # If all columns are keys, do nothing on conflict
+                sql = f"""
+                    INSERT INTO ntvs.{table_name} ({cols})
+                    VALUES ({placeholders})
+                    ON CONFLICT ({conflict_col})
+                    DO NOTHING;
+                """
 
-            values = [row[col] for col in columns]
+            # Handle empty strings by converting them to None (NULL in SQL)
+            values = [row[col] if row[col] != "" else None for col in columns]
             cursor.execute(sql, values)
     
     logger.info(f"Loaded {file_path} into {table_name}")
