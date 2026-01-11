@@ -14,7 +14,7 @@ app.log
 logs/
 
 # Project Data
-/data/
+**/data/
 
 # System
 .DS_Store

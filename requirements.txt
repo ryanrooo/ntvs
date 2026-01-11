@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+psycopg2-binary
+python-dotenv
+requests
+beautifulsoup4
+pandas
+matplotlib
+seaborn
+apache-airflow==2.7.1
