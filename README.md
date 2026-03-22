@@ -97,3 +97,10 @@ You can trigger this DAG manually from the Airflow UI to populate your database 
 ## ✍️ Authors
 
 *   **Ryan Nguyen** - *Initial Work*
+
+## 📐 Development Governance
+
+Feature work in this repository is governed by the project constitution at
+`.specify/memory/constitution.md`. New work is expected to start from a specification,
+pass a constitution check during planning, and include the test and operability
+evidence needed for ETL, schema, and API changes.
