@@ -26,12 +26,13 @@ ntvs/
 │   ├── api.py          # FastAPI application
 │   ├── extract.py      # Web scraping and data extraction logic
 │   ├── load_data.py    # Database loading logic
-│   └── requirements.txt
+│   └── Dockerfile
 ├── dags/               # Airflow DAGs
 │   └── ntvs_etl.py     # Main ETL pipeline definition
 ├── data/               # Temporary storage for extracted CSVs
 ├── db/                 # Database initialization scripts
 │   └── init.sql
+├── requirements.txt    # Python dependencies for the API image
 ├── compose.yml         # Docker Compose configuration
 └── .env                # Environment configuration
 ```

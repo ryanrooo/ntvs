@@ -7,6 +7,7 @@ import sys
 import hashlib
 import os
 import logging
+from urllib.parse import urlparse, parse_qs
 
 # Ensure directories exist
 os.makedirs("data", exist_ok=True)
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 # Base URL for VStar results
 BASE_URL = "https://results.vstarvolleyball.com"
+ALL_EVENTS_URL = "https://vstarvolleyball.com/?page_id=409&scope=All"
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0"
 }
@@ -42,12 +44,53 @@ def extract_club_name(team_name):
     if not parts: return "Unknown"
     return parts[0]
 
+def get_html(url):
+    logger.info(f"Fetching page: {url}")
+    try:
+        response = requests.get(url, headers=HEADERS, timeout=30)
+        response.raise_for_status()
+        return response.text
+    except requests.RequestException as exc:
+        logger.warning(f"Failed to fetch {url}: {exc}")
+        return None
+
 def get_tournament_page(tournament_id):
     url = f"{BASE_URL}/index.php?id={tournament_id}"
-    logger.info(f"Fetching tournament page: {url}")
-    response = requests.get(url, headers=HEADERS)
-    if response.status_code != 200: return None
-    return response.text
+    return get_html(url)
+
+def discover_tournaments():
+    html = get_html(ALL_EVENTS_URL)
+    if not html:
+        return []
+
+    soup = BeautifulSoup(html, 'html.parser')
+    content = soup.select_one('article') or soup.select_one('.entry-content') or soup
+
+    tournaments = []
+    seen_ids = set()
+
+    for link in content.find_all('a', href=True):
+        href = link['href'].strip()
+        if not href.startswith(f"{BASE_URL}/index.php?id="):
+            continue
+
+        event_name = link.get_text(" ", strip=True)
+        if not event_name:
+            continue
+
+        parsed = urlparse(href)
+        event_id = parse_qs(parsed.query).get("id", [None])[0]
+        if not event_id or event_id in seen_ids:
+            continue
+
+        seen_ids.add(event_id)
+        tournaments.append({
+            "vstar_id": event_id,
+            "name": event_name
+        })
+
+    logger.info(f"Discovered {len(tournaments)} tournaments from the VSTAR all-events page.")
+    return tournaments
 
 def parse_result_links(html, tournament_id):
     soup = BeautifulSoup(html, 'html.parser')
@@ -57,31 +100,18 @@ def parse_result_links(html, tournament_id):
         file_name = el['data-bs-file']
         if "Pools" in file_name and "assignment" not in file_name:
              result_files.append(file_name)
-    return list(set(result_files))
+    return sorted(set(result_files))
 
 # --- Extraction Logic ---
 
-def extract_pool_data(tournament_id, file_name):
-    # Note: This function now receives the DB_TOURNAMENT_ID (e.g. kickoffclassic_2025)
-    # But fetching URL needs the VStar ID.
-    # However, 'view.php' uses `?id=kickoffclassic`, not `_2025`.
-    # Quick Fix: The `file_name` argument comes from `parse_result_links`.
-    # But the URL construction looks like: `view.php?id={tournament_id}...`.
-    # This BREAKS if we pass `kickoffclassic_2025` here.
-    
-    # Correction: pass both IDs or strip suffix.
-    # Simpler: Split ID on first underscore? No, some IDs might have underscores.
-    # Let's clean this up by passing `vstar_id` AND `db_tournament_id` to this function?
-    # Or extracting vstar_id from the passed ID if we assume a format.
-    
-    # I'll rely on the caller to handle this properly, but since I am overwriting the file,
-    # I will modify the signature to accept `vstar_id` for fetching and `db_tournament_id` for Logic.
-    pass
-
 def extract_pool_data_v2(vstar_id, db_tournament_id, file_name):
     url = f"{BASE_URL}/view.php?id={vstar_id}&file={file_name}"
-    response = requests.get(url, headers=HEADERS)
-    if response.status_code != 200: return [], [], [], [] 
+    try:
+        response = requests.get(url, headers=HEADERS, timeout=30)
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        logger.warning(f"Failed to fetch result file {file_name} for {vstar_id}: {exc}")
+        return [], [], [], []
 
     soup = BeautifulSoup(response.text, 'html.parser')
     
@@ -260,15 +290,10 @@ def extract_pool_data_v2(vstar_id, db_tournament_id, file_name):
     return list(extracted_teams.values()), list(extracted_pools.values()), extracted_standings, extracted_matches
 
 def main():
-    # Tournaments List with YEAR
-    tournaments_to_process = [
-        ("kickoffclassic", "Kickoff Classic", "2025"),
-        ("bidwarmup1", "Bid Warm Up 1", "2025"),
-        ("centexchallenge", "Centex Challenge", "2025"),
-        ("dallasfrozenfest", "Dallas Frozen Fest", "2025"),
-        ("northtexashomeopener", "North Texas Home Opener", "2025"),
-        ("fwkickoff", "FW Kickoff", "2025")
-    ]
+    tournaments_to_process = discover_tournaments()
+    if not tournaments_to_process:
+        logger.warning("No tournaments discovered from the VSTAR all-events page.")
+        return
     
     db_tournaments = []
     db_teams = {} 
@@ -276,14 +301,12 @@ def main():
     db_standings = []
     db_matches = []
     
-    for vstar_id, t_name, t_year in tournaments_to_process:
-        # Create UNIQUE ID for Database: ID_YEAR
-        db_tournament_id = f"{vstar_id}_{t_year}"
-        full_name = f"{t_name} {t_year}"
-        
-        logger.info(f"Starting ETL for {full_name} ({db_tournament_id})...")
-        
-        db_tournaments.append({"tournament_id": db_tournament_id, "name": full_name})
+    for tournament in tournaments_to_process:
+        vstar_id = tournament["vstar_id"]
+        tournament_name = tournament["name"]
+        db_tournament_id = vstar_id
+
+        logger.info(f"Starting ETL for {tournament_name} ({db_tournament_id})...")
         
         html = get_tournament_page(vstar_id)
         if not html:
@@ -292,6 +315,7 @@ def main():
 
         files = parse_result_links(html, vstar_id)
         logger.info(f"  Found {len(files)} result files.")
+        db_tournaments.append({"tournament_id": db_tournament_id, "name": tournament_name})
         
         for f in files:
             # Pass BOTH IDs
