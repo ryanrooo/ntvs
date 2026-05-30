@@ -1,3 +1,4 @@
+import math
 import re
 from collections import Counter, defaultdict
 from typing import Any
@@ -461,6 +462,107 @@ def build_director_dashboard(club_key, requests: list[dict], stats: dict, staff:
             partial=not club_key,
             message="All caught up — no pending requests." if not shaped_requests else "Director queue loaded.",
         ),
+    }
+
+
+# ── Multi-club comparison + radar (US5) ─────────────────────────────────────
+
+_RADAR_AXES = ["Win %", "Depth", "Gold", "Dev", "Alumni"]
+_RADAR_CX, _RADAR_CY, _RADAR_R = 110, 108, 78
+
+
+def _radar_points(values: list) -> str:
+    pts = []
+    for i in range(5):
+        v = values[i] if i < len(values) else 0
+        v = max(0.0, min(1.0, float(v or 0)))
+        ang = math.radians(-90 + i * 72)
+        x = _RADAR_CX + _RADAR_R * v * math.cos(ang)
+        y = _RADAR_CY + _RADAR_R * v * math.sin(ang)
+        pts.append(f"{x:.1f},{y:.1f}")
+    return " ".join(pts)
+
+
+def _radar_axis_labels() -> list[dict]:
+    out = []
+    for i, name in enumerate(_RADAR_AXES):
+        ang = math.radians(-90 + i * 72)
+        out.append({
+            "name": name,
+            "x": round(_RADAR_CX + (_RADAR_R + 14) * math.cos(ang), 1),
+            "y": round(_RADAR_CY + (_RADAR_R + 14) * math.sin(ang), 1),
+        })
+    return out
+
+
+def _best_club_key(clubs: list[dict], key: str, direction: int) -> str | None:
+    vals = [(c["club_key"], c.get(key)) for c in clubs if c.get(key) is not None]
+    if len(vals) < 2:
+        return None
+    nums = [v for _, v in vals]
+    if len(set(nums)) <= 1:  # all tie -> suppress the "best" marker
+        return None
+    target = max(nums) if direction > 0 else min(nums)
+    for ck, v in vals:
+        if v == target:
+            return ck
+    return None
+
+
+def build_multi_comparison(clubs: list[dict]) -> dict:
+    metric_defs = [
+        ("National rank", "rank", -1, "rank"),
+        ("Win percentage", "win_rate", 1, "pct"),
+        ("Active teams", "teams", 1, "num"),
+        ("Gold finishes", "gold", 1, "num"),
+        ("Silver / Bronze", "silver_bronze", 0, "sb"),
+        ("Coaching staff", "coaches", 1, "num"),
+        ("College commits", "commits", 1, "num"),
+        ("Season fee", "fee", -1, "money"),
+        ("Home city", "city", 0, "text"),
+    ]
+    metrics = []
+    for label, key, direction, fmt in metric_defs:
+        values, display = {}, {}
+        for c in clubs:
+            ck = c["club_key"]
+            if fmt == "sb":
+                s, b = c.get("silver"), c.get("bronze")
+                values[ck] = None
+                display[ck] = f"{s if s is not None else '—'} / {b if b is not None else '—'}"
+            elif fmt == "text":
+                values[ck] = None
+                display[ck] = c.get(key) or "—"
+            else:
+                v = c.get(key)
+                values[ck] = v
+                if v is None:
+                    display[ck] = "—"
+                elif fmt == "rank":
+                    display[ck] = f"#{v}"
+                elif fmt == "pct":
+                    display[ck] = f"{round(float(v) * 100)}%"
+                elif fmt == "money":
+                    display[ck] = f"${int(v):,}"
+                else:
+                    display[ck] = str(v)
+        best = _best_club_key(clubs, key, direction) if direction != 0 else None
+        metrics.append({"label": label, "key": key, "dir": direction, "values": values, "display": display, "best_club_key": best})
+
+    radar = {
+        "axes": _RADAR_AXES,
+        "axis_labels": _radar_axis_labels(),
+        "grid": _radar_points([1, 1, 1, 1, 1]),
+        "series": [
+            {"club_key": c["club_key"], "display_name": c["display_name"], "color": c["color"], "points": _radar_points(c.get("radar") or [])}
+            for c in clubs
+        ],
+    }
+    return {
+        "clubs": [{k: c.get(k) for k in ("club_key", "display_name", "color", "tier", "rank", "win_rate", "city")} for c in clubs],
+        "metrics": metrics,
+        "radar": radar,
+        "data_state": serialize_data_state(clubs, message="Comparison loaded." if clubs else "Pin clubs to compare."),
     }
 
 

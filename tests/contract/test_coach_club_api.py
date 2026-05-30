@@ -252,3 +252,62 @@ def test_director_page_renders(monkeypatch):
     assert r.status_code == 200
     assert "Pending requests" in r.text
     assert "Priya Nair" in r.text
+
+
+# ── US5: multi-club compare (clubs[] 2–4, backward compatible) ─────────────
+
+COMPARE_DATA = {
+    "clubs": [{"club_key": "drive-nation", "display_name": "Drive Nation", "color": "#f5c518", "tier": 1, "rank": 2, "win_rate": 0.74, "city": None}],
+    "metrics": [{"label": "Win percentage", "key": "win_rate", "dir": 1, "values": {}, "display": {"drive-nation": "74%"}, "best_club_key": "drive-nation"}],
+    "radar": {"axes": ["Win %"], "axis_labels": [{"name": "Win %", "x": 110, "y": 30}], "grid": "110,30", "series": [{"club_key": "drive-nation", "display_name": "Drive Nation", "color": "#f5c518", "points": "110,40"}]},
+    "data_state": {"completeness": "complete", "message": "Comparison loaded."},
+}
+
+
+def test_compare_legacy_pair_still_works(monkeypatch):
+    captured = {}
+
+    def fake(func, *a, **k):
+        captured["keys"] = a[0] if a else None
+        return COMPARE_DATA
+    monkeypatch.setattr(api, "fetch_with_connection", fake)
+    client = TestClient(api.create_app())
+    r = client.get("/api/clubs/compare?club_a=drive-nation&club_b=madfrog")
+    assert r.status_code == 200
+    assert captured["keys"] == ["drive-nation", "madfrog"]
+
+
+def test_compare_clubs_param_takes_precedence(monkeypatch):
+    captured = {}
+
+    def fake(func, *a, **k):
+        captured["keys"] = a[0] if a else None
+        return COMPARE_DATA
+    monkeypatch.setattr(api, "fetch_with_connection", fake)
+    client = TestClient(api.create_app())
+    r = client.get("/api/clubs/compare?clubs=a&clubs=b&clubs=c&club_a=x&club_b=y")
+    assert r.status_code == 200
+    assert captured["keys"] == ["a", "b", "c"]
+
+
+def test_compare_rejects_fewer_than_two():
+    client = TestClient(api.create_app())
+    assert client.get("/api/clubs/compare?clubs=a").status_code == 422
+
+
+def test_compare_rejects_more_than_four():
+    client = TestClient(api.create_app())
+    assert client.get("/api/clubs/compare?clubs=a&clubs=b&clubs=c&clubs=d&clubs=e").status_code == 422
+
+
+def test_compare_page_renders_with_radar(monkeypatch):
+    def fake(func, *a, **k):
+        if getattr(func, "__name__", "") == "get_club_rankings":
+            return [{"club_key": "drive-nation", "display_name": "Drive Nation", "rank": 2, "teams_active": 2, "win_rate": 0.74, "trend_label": "Stable"}]
+        return COMPARE_DATA
+    monkeypatch.setattr(api, "fetch_with_connection", fake)
+    client = TestClient(api.create_app())
+    r = client.get("/compare?clubs=drive-nation&clubs=madfrog")
+    assert r.status_code == 200
+    assert "Profile overlay" in r.text
+    assert "Drive Nation" in r.text

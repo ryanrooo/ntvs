@@ -16,6 +16,7 @@ from services.analytics_queries import (
     get_club_profile,
     get_club_rankings,
     get_homepage_data,
+    get_multi_club_comparison,
     get_pool_results,
     get_tournaments,
 )
@@ -95,15 +96,20 @@ def create_app() -> FastAPI:
         logger.info("api_clubs q=%s sort=%s division=%s state=%s", q, sort, division, state["completeness"])
         return {"clubs": clubs, "data_state": state}
 
+    def _compare_keys(clubs, club_a, club_b):
+        keys = [k for k in (clubs or []) if k] or [k for k in (club_a, club_b) if k]
+        seen: set = set()
+        return [k for k in keys if not (k in seen or seen.add(k))]
+
     @app.get("/api/clubs/compare")
-    def api_club_compare(club_a: str = Query(...), club_b: str = Query(...)):
-        comparison = fetch_with_connection(get_club_comparison, club_a, club_b)
-        logger.info(
-            "api_club_compare club_a=%s club_b=%s state=%s",
-            club_a,
-            club_b,
-            comparison["data_state"]["completeness"],
-        )
+    def api_club_compare(clubs: list[str] | None = Query(default=None), club_a: str | None = None, club_b: str | None = None):
+        # Accepts a repeatable `clubs` param (2–4) with precedence over the legacy
+        # club_a/club_b pair (backward compatible).
+        keys = _compare_keys(clubs, club_a, club_b)
+        if not (2 <= len(keys) <= 4):
+            return JSONResponse(status_code=422, content={"error": "invalid", "message": "Compare needs 2 to 4 clubs."})
+        comparison = fetch_with_connection(get_multi_club_comparison, keys)
+        logger.info("api_club_compare n=%s state=%s", len(keys), comparison["data_state"]["completeness"])
         return comparison
 
     @app.get("/api/clubs/{club_key}")
@@ -150,20 +156,17 @@ def create_app() -> FastAPI:
         })
 
     @app.get("/compare", response_class=HTMLResponse)
-    def compare_page(request: Request, club_a: str | None = None, club_b: str | None = None):
-        clubs = api_clubs()
-        comparison = None
-        if club_a and club_b:
-            comparison = api_club_compare(club_a, club_b)
+    def compare_page(request: Request, clubs: list[str] | None = Query(default=None), club_a: str | None = None, club_b: str | None = None):
+        # pinned set: explicit clubs param > legacy pair > the ntvs_pins cookie
+        keys = _compare_keys(clubs, club_a, club_b)
+        if not keys:
+            keys = [k for k in request.cookies.get("ntvs_pins", "").split(",") if k]
+        keys = keys[:4]
+        options = api_clubs()["clubs"]
+        comparison = fetch_with_connection(get_multi_club_comparison, keys) if len(keys) >= 2 else None
         return templates.TemplateResponse(
             "club_comparison.html",
-            {
-                "request": request,
-                "club_options": clubs["clubs"],
-                "comparison": comparison,
-                "club_a": club_a or "",
-                "club_b": club_b or "",
-            },
+            {"request": request, "club_options": options, "comparison": comparison, "pinned": keys},
         )
 
     @app.get("/api/coaches")

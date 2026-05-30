@@ -50,21 +50,20 @@ def test_club_profile_api_404s_when_missing(monkeypatch):
 
 
 def test_compare_page_renders_selection_options(monkeypatch):
+    # US5 redefined /compare to the multi-club shape (clubs[]/metrics/radar).
     def fake_fetch(func, *args, **kwargs):
-        if func.__name__ == "get_club_rankings":
+        if getattr(func, "__name__", "") == "get_club_rankings":
             return [{"club_key": "drive-nation", "display_name": "Drive Nation", "rank": 1, "teams_active": 2, "win_rate": 0.8, "trend_label": "Stable"}]
         return {
-            "club_a": {"display_name": "Drive Nation", "teams_active": 2, "win_rate": 0.8, "ranking_score": 10},
-            "club_b": {"display_name": "Madfrog", "teams_active": 1, "win_rate": 0.7, "ranking_score": 8},
-            "comparison_metrics": [],
-            "head_to_head": {"available": False, "matches_played": 0, "club_a_wins": 0, "club_b_wins": 0},
-            "shared_matchups": [],
-            "data_state": {"completeness": "partial", "message": "No direct head-to-head history is available."},
+            "clubs": [{"club_key": "drive-nation", "display_name": "Drive Nation", "color": "#f5c518", "tier": 1, "rank": 1, "win_rate": 0.8, "city": None}],
+            "metrics": [{"label": "Win percentage", "key": "win_rate", "dir": 1, "values": {}, "display": {"drive-nation": "80%"}, "best_club_key": "drive-nation"}],
+            "radar": {"axes": ["Win %"], "axis_labels": [], "grid": "110,30", "series": []},
+            "data_state": {"completeness": "complete", "message": "Comparison loaded."},
         }
 
     monkeypatch.setattr(api, "fetch_with_connection", fake_fetch)
     client = TestClient(api.create_app())
-    response = client.get("/compare?club_a=drive-nation&club_b=madfrog")
+    response = client.get("/compare?clubs=drive-nation&clubs=madfrog")
     assert response.status_code == 200
     assert "Drive Nation" in response.text
 

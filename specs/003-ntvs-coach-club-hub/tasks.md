@@ -175,18 +175,18 @@ that every story builds on.
 
 ### Tests for User Story 5 ⚠️ (write first, must fail)
 
-- [ ] T049 [P] [US5] Unit test `tests/unit/test_compare_metrics.py` — best value per metric, `dir=-1` (lower-is-better) for season fee, and best-marker suppression when all values tie
-- [ ] T050 [P] [US5] Contract test for `GET /api/clubs/compare` (legacy `club_a`+`club_b` compat; repeatable `clubs` 2–4 with precedence; 422 outside 2–4; `metrics[].best_club_key` + `dir`; `radar` axes/series; `data_state`) in `tests/contract/test_coach_club_api.py`
+- [X] T049 [P] [US5] Unit test `tests/unit/test_compare_metrics.py` — best value per metric, `dir=-1` (lower-is-better) for season fee, and best-marker suppression when all values tie
+- [X] T050 [P] [US5] Contract test for `GET /api/clubs/compare` (legacy `club_a`+`club_b` compat; repeatable `clubs` 2–4 with precedence; 422 outside 2–4; `metrics[].best_club_key` + `dir`; `radar` axes/series; `data_state`) in `tests/contract/test_coach_club_api.py`
 
 ### Implementation for User Story 5
 
-- [ ] T051 [US5] Implement N-club compare data assembly (rank, win %, teams, gold/silver/bronze, coaches, commits, fee, city) from `club_season_summary` + `club_attributes` in `code/services/analytics_queries.py`
-- [ ] T052 [US5] Add compare shaping in `code/services/view_models.py` — `best_club_key` per metric (dir-aware, tie suppression, neutral placeholder when missing) and radar normalization of the five `radar_*` axes to 0–1
-- [ ] T053 [US5] Extend `GET /api/clubs/compare` to accept repeatable `clubs` (2–4, precedence over `club_a`/`club_b`, 422 outside range) and add the `/compare` page route that reads the `ntvs_pins` cookie and the `clubs` param, in `code/api.py`
-- [ ] T054 [P] [US5] Update comparison template — up to 4 clubs metrics table (best-value highlight, neutral placeholders for missing fee/medals/radar), radar/spider chart with color-keyed legend, and empty state — in `code/templates/club_comparison.html`
-- [ ] T055 [P] [US5] Create `code/static/js/pins.js` — `ntvs_pins` cookie toggle, max-4 enforcement with a clear refusal message, pinned-count badge, and UI sync across directory/profile/compare
-- [ ] T056 [US5] Add pin/unpin toggle controls to `code/templates/club_rankings.html` and `code/templates/club_profile.html` (these templates are shared with US8)
-- [ ] T057 [US5] Add compare-table / radar / pin-toggle styles to `code/static/css/club_analytics.css`
+- [X] T051 [US5] Implement N-club compare data assembly (rank, win %, teams, gold/silver/bronze, coaches, commits, fee, city) from `club_season_summary` + `club_attributes` in `code/services/analytics_queries.py`
+- [X] T052 [US5] Add compare shaping in `code/services/view_models.py` — `best_club_key` per metric (dir-aware, tie suppression, neutral placeholder when missing) and radar normalization of the five `radar_*` axes to 0–1
+- [X] T053 [US5] Extend `GET /api/clubs/compare` to accept repeatable `clubs` (2–4, precedence over `club_a`/`club_b`, 422 outside range) and add the `/compare` page route that reads the `ntvs_pins` cookie and the `clubs` param, in `code/api.py`
+- [X] T054 [P] [US5] Update comparison template — up to 4 clubs metrics table (best-value highlight, neutral placeholders for missing fee/medals/radar), radar/spider chart with color-keyed legend, and empty state — in `code/templates/club_comparison.html`
+- [X] T055 [P] [US5] Create `code/static/js/pins.js` — `ntvs_pins` cookie toggle, max-4 enforcement with a clear refusal message, pinned-count badge, and UI sync across directory/profile/compare
+- [X] T056 [US5] Add pin/unpin toggle controls to `code/templates/club_rankings.html` and `code/templates/club_profile.html` (these templates are shared with US8)
+- [X] T057 [US5] Add compare-table / radar / pin-toggle styles to `code/static/css/club_analytics.css`
 
 **Checkpoint**: Multi-club comparison works; legacy two-club compare remains intact.
 

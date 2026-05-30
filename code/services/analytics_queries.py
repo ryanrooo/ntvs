@@ -271,3 +271,42 @@ def get_club_comparison(conn, club_a: str, club_b: str) -> dict[str, Any]:
         "shared_matchups": rows,
         "data_state": serialize_data_state(rows, partial=not bool(rows), message="No direct head-to-head history is available." if not rows else "Comparison loaded successfully."),
     }
+
+
+def get_multi_club_comparison(conn, club_keys: list[str]) -> dict[str, Any]:
+    """Assemble a 2–4 club comparison (US5): per-club metrics from
+    club_season_summary + club_attributes, plus radar dimensions. Performance
+    (rank/win%/teams) stays derived from match data; medals/fee/radar come from
+    the NTVS-owned club_attributes. Best-value + radar geometry are shaped in
+    view_models.build_multi_comparison."""
+    rankings = get_club_rankings(conn, None, "rank", None)
+    rank_map = {c["club_key"]: c for c in rankings}
+    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+        cursor.execute("SELECT * FROM ntvs.club_attributes WHERE club_key = ANY(%s)", (list(club_keys),))
+        attrs = {a["club_key"]: dict(a) for a in fetch_all_dict(cursor)}
+
+    clubs = []
+    for key in club_keys:
+        r = rank_map.get(key, {})
+        a = attrs.get(key, {})
+        clubs.append({
+            "club_key": key,
+            "display_name": r.get("display_name") or key.replace("-", " ").title(),
+            "color": a.get("color") or "#5bb8ff",
+            "tier": a.get("tier"),
+            "rank": r.get("rank"),
+            "win_rate": round(float(r.get("win_rate") or 0), 3),
+            "teams": int(r.get("teams_active") or 0),
+            "gold": a.get("gold"),
+            "silver": a.get("silver"),
+            "bronze": a.get("bronze"),
+            "coaches": a.get("coaches_count"),
+            "commits": a.get("commits"),
+            "fee": a.get("fee"),
+            "city": None,  # not in the NTVS data model -> neutral placeholder
+            "radar": [a.get("radar_win"), a.get("radar_depth"), a.get("radar_gold"), a.get("radar_dev"), a.get("radar_alumni")],
+        })
+
+    from .view_models import build_multi_comparison
+
+    return build_multi_comparison(clubs)
