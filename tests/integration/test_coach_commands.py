@@ -67,3 +67,60 @@ def test_add_endorsement_dedupes_same_day_submit():
 
 def test_add_endorsement_unknown_coach_returns_none():
     assert coach_commands.add_endorsement("nobody-xyz", AUTHOR, "Parent", 5, [], BODY) is None
+
+
+# ── US3: positions + verification requests ─────────────────────────────────
+
+PCLUB = "Pytest FC"
+
+
+def _cleanup_positions():
+    with db.write_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM ntvs.coach_positions WHERE coach_key = %s AND club_label = %s", (COACH, PCLUB))
+
+
+def test_add_position_dedupes_on_natural_key():
+    _cleanup_positions()
+    try:
+        first = coach_commands.add_position(COACH, PCLUB, "Assistant", "15-16", "2020-2022")
+        assert first is not None and first["applied"] is True and first["position"]["status"] == "pending"
+        again = coach_commands.add_position(COACH, PCLUB, "Assistant", "15-16", "2020-2022")
+        assert again["applied"] is False
+        assert again["position"]["position_id"] == first["position"]["position_id"]
+    finally:
+        _cleanup_positions()
+
+
+def test_delete_position_idempotent_and_blocks_verified():
+    _cleanup_positions()
+    try:
+        pid = coach_commands.add_position(COACH, PCLUB, "Assistant", "15-16", "2020-2022")["position"]["position_id"]
+        assert coach_commands.delete_position(COACH, pid) == {"removed": True, "reason": "deleted"}
+        assert coach_commands.delete_position(COACH, pid)["removed"] is True  # idempotent (absent)
+
+        pid2 = coach_commands.add_position(COACH, PCLUB, "Head Coach", "17", "2021-2023")["position"]["position_id"]
+        with db.write_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE ntvs.coach_positions SET status='verified' WHERE position_id = %s", (pid2,))
+        assert coach_commands.delete_position(COACH, pid2) == {"removed": False, "reason": "verified"}
+    finally:
+        _cleanup_positions()
+
+
+def test_create_verification_request_dedupes_pending():
+    club = "pytest-fc"
+
+    def _cleanup_req():
+        with db.write_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM ntvs.verification_requests WHERE coach_key = %s AND club_key = %s", (COACH, club))
+
+    _cleanup_req()
+    try:
+        first = coach_commands.create_verification_request(COACH, club, note="please confirm")
+        assert first is not None and first["applied"] is True and first["status"] == "pending"
+        again = coach_commands.create_verification_request(COACH, club, note="please confirm")
+        assert again["applied"] is False and again["request_id"] == first["request_id"]
+    finally:
+        _cleanup_req()

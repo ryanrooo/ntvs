@@ -139,3 +139,59 @@ def test_post_endorsement_requires_relationship():
                     json={"stars": 5, "body": "Great coach."})
     assert r.status_code == 422
     assert r.json()["error"] == "invalid"
+
+
+# ── US3: positions + verification requests ─────────────────────────────────
+
+def test_post_position_requires_club_and_role():
+    client = TestClient(api.create_app())
+    r = client.post("/api/coaches/maria-alvarez/positions", json={"club_label": "", "role": ""})
+    assert r.status_code == 422
+    assert r.json()["error"] == "invalid"
+
+
+def test_post_position_accepts(monkeypatch):
+    monkeypatch.setattr(
+        api.coach_commands, "add_position",
+        lambda *a, **k: {"position": {"position_id": 9, "club_label": "Drive Nation", "role": "Head Coach",
+                                       "age_group": "17 Open", "years": "2021–2025", "status": "pending",
+                                       "club_key": "drive-nation", "club_color": "#f5c518", "record": "", "note": ""},
+                         "applied": True},
+    )
+    client = TestClient(api.create_app())
+    r = client.post("/api/coaches/maria-alvarez/positions",
+                    json={"club_label": "Drive Nation", "role": "Head Coach", "age_group": "17 Open", "years": "2021–2025"})
+    assert r.status_code == 201
+    assert r.json()["status"] == "pending"
+
+
+def test_delete_position_returns_204(monkeypatch):
+    monkeypatch.setattr(api.coach_commands, "delete_position", lambda *a, **k: {"removed": True, "reason": "deleted"})
+    client = TestClient(api.create_app())
+    r = client.delete("/api/coaches/maria-alvarez/positions/9")
+    assert r.status_code == 204
+
+
+def test_delete_verified_position_returns_409(monkeypatch):
+    monkeypatch.setattr(api.coach_commands, "delete_position", lambda *a, **k: {"removed": False, "reason": "verified"})
+    client = TestClient(api.create_app())
+    r = client.delete("/api/coaches/maria-alvarez/positions/1")
+    assert r.status_code == 409
+    assert r.json()["error"] == "verified"
+
+
+def test_post_verification_request_requires_club():
+    client = TestClient(api.create_app())
+    r = client.post("/api/coaches/maria-alvarez/verification-requests", json={"note": "please verify"})
+    assert r.status_code == 422
+    assert r.json()["error"] == "invalid"
+
+
+def test_post_verification_request_accepts(monkeypatch):
+    monkeypatch.setattr(api.coach_commands, "create_verification_request",
+                        lambda *a, **k: {"request_id": 7, "status": "pending", "applied": True})
+    client = TestClient(api.create_app())
+    r = client.post("/api/coaches/maria-alvarez/verification-requests",
+                    json={"club_key": "drive-nation", "position_id": 1})
+    assert r.status_code == 201
+    assert r.json()["status"] == "pending"

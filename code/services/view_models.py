@@ -393,6 +393,16 @@ def _teams_from_positions(career: list[dict]) -> list[dict]:
     return teams
 
 
+def compute_profile_strength(position_count: int, has_about: bool = False) -> int:
+    """Résumé completeness 0–100 (FR-014), mirrored in editor.js.
+
+    Base 40 for a claimed profile, +14 per position, +10 when an about/bio is present,
+    capped at 100. Increases as more positions and profile detail are added.
+    """
+    strength = 40 + max(0, int(position_count)) * 14 + (10 if has_about else 0)
+    return max(0, min(100, strength))
+
+
 def build_coach_profile(coach: dict, positions: list[dict], endorsements: list[dict]) -> dict:
     summary = build_endorsement_summary(endorsements)
     career = [_build_position(p) for p in positions]

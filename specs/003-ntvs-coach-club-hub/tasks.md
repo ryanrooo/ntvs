@@ -127,18 +127,18 @@ that every story builds on.
 
 ### Tests for User Story 3 ⚠️ (write first, must fail)
 
-- [ ] T033 [P] [US3] Unit test for the profile-strength formula (increases as positions and steps are completed) in `tests/unit/test_compare_metrics.py`
-- [ ] T034 [P] [US3] Contract tests for `POST /api/coaches/{coach_key}/positions` (201; 422 when club or role missing; idempotent on club+role+years), `DELETE .../positions/{position_id}` (204 idempotent; 409 when verified), and `POST .../verification-requests` (201; existing pending returned) in `tests/contract/test_coach_club_api.py`
-- [ ] T035 [P] [US3] Integration test for position add/delete and verification-request creation idempotency (re-add is no-op; delete-of-verified blocked) in `tests/integration/test_coach_commands.py`
+- [X] T033 [P] [US3] Unit test for the profile-strength formula (increases as positions and steps are completed) in `tests/unit/test_compare_metrics.py`
+- [X] T034 [P] [US3] Contract tests for `POST /api/coaches/{coach_key}/positions` (201; 422 when club or role missing; idempotent on club+role+years), `DELETE .../positions/{position_id}` (204 idempotent; 409 when verified), and `POST .../verification-requests` (201; existing pending returned) in `tests/contract/test_coach_club_api.py`
+- [X] T035 [P] [US3] Integration test for position add/delete and verification-request creation idempotency (re-add is no-op; delete-of-verified blocked) in `tests/integration/test_coach_commands.py`
 
 ### Implementation for User Story 3
 
-- [ ] T036 [US3] Implement `add_position` (dedupe key `(coach_key, club_label/club_key, role, years)`), `delete_position` (409 if verified, no-op if absent), and `create_verification_request` (return existing pending) in `code/services/coach_commands.py`
-- [ ] T037 [US3] Add profile-strength computation (from completeness) plus pending/verified position counts to `code/services/view_models.py`
-- [ ] T038 [US3] Add `POST /api/coaches/{coach_key}/positions` (rate-limit + honeypot gated per FR-035), `DELETE .../positions/{position_id}`, and `POST .../verification-requests` endpoints plus the `/coaches/{coach_key}/edit` page route, with `logger.info`, in `code/api.py`
-- [ ] T039 [P] [US3] Create résumé editor template (stepper, position form with required club+role and remove control, live preview with mirrored career timeline, live verified-position count, profile-strength meter) in `code/templates/coach_editor.html`
-- [ ] T040 [P] [US3] Create `code/static/js/editor.js` — live résumé preview, profile-strength meter, add/remove position, submit verification request
-- [ ] T041 [US3] Add stepper / editor / live-preview / strength-meter styles to `code/static/css/club_analytics.css`
+- [X] T036 [US3] Implement `add_position` (dedupe key `(coach_key, club_label/club_key, role, years)`), `delete_position` (409 if verified, no-op if absent), and `create_verification_request` (return existing pending) in `code/services/coach_commands.py`
+- [X] T037 [US3] Add profile-strength computation (from completeness) plus pending/verified position counts to `code/services/view_models.py`
+- [X] T038 [US3] Add `POST /api/coaches/{coach_key}/positions` (rate-limit + honeypot gated per FR-035), `DELETE .../positions/{position_id}`, and `POST .../verification-requests` endpoints plus the `/coaches/{coach_key}/edit` page route, with `logger.info`, in `code/api.py`
+- [X] T039 [P] [US3] Create résumé editor template (stepper, position form with required club+role and remove control, live preview with mirrored career timeline, live verified-position count, profile-strength meter) in `code/templates/coach_editor.html`
+- [X] T040 [P] [US3] Create `code/static/js/editor.js` — live résumé preview, profile-strength meter, add/remove position, submit verification request
+- [X] T041 [US3] Add stepper / editor / live-preview / strength-meter styles to `code/static/css/club_analytics.css`
 
 **Checkpoint**: Coaches can self-build résumés and request verification; requests are queued for US4.
 
