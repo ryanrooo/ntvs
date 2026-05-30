@@ -107,3 +107,64 @@ def get_coach_profile(conn, coach_key: str) -> dict[str, Any] | None:
     from .view_models import build_coach_profile
 
     return build_coach_profile(coach_rows[0], positions, endorsements)
+
+
+def get_director_queue(conn, club_key: str | None = None) -> dict[str, Any]:
+    """Director dashboard: pending verification requests, stats, and current staff
+    for a club. When club_key is omitted, defaults to the club with the most
+    pending requests (the demo director's queue)."""
+    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+        if not club_key:
+            cursor.execute(
+                """
+                SELECT club_key FROM ntvs.verification_requests
+                WHERE status = 'pending'
+                GROUP BY club_key ORDER BY count(*) DESC, club_key LIMIT 1
+                """
+            )
+            row = cursor.fetchone()
+            club_key = row["club_key"] if row else None
+
+    requests: list = []
+    staff: list = []
+    stats = {"coaches": 0, "verified": 0, "pending": 0, "match_rate": 0}
+    if club_key:
+        with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute(
+                """
+                SELECT request_id, coach_key, club_key, position_id, name, initials, color,
+                       role, claim_years, match_strength, match_pct, note, created_at
+                FROM ntvs.verification_requests
+                WHERE club_key = %s AND status = 'pending'
+                ORDER BY created_at ASC, request_id ASC
+                """,
+                (club_key,),
+            )
+            requests = fetch_all_dict(cursor)
+        with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    (SELECT count(*) FROM ntvs.coaches WHERE club_key = %(ck)s) AS coaches,
+                    (SELECT count(*) FROM ntvs.coaches WHERE club_key = %(ck)s AND verified) AS verified,
+                    (SELECT count(*) FROM ntvs.verification_requests WHERE club_key = %(ck)s AND status = 'pending') AS pending,
+                    (SELECT COALESCE(ROUND(AVG(match_pct)), 0) FROM ntvs.verification_requests
+                        WHERE club_key = %(ck)s AND status = 'pending') AS match_rate
+                """,
+                {"ck": club_key},
+            )
+            stats = dict(cursor.fetchone())
+        with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute(
+                """
+                SELECT coach_key, display_name, initials, gradient, role, verified
+                FROM ntvs.coaches WHERE club_key = %s
+                ORDER BY verified DESC, display_name ASC
+                """,
+                (club_key,),
+            )
+            staff = fetch_all_dict(cursor)
+
+    from .view_models import build_director_dashboard
+
+    return build_director_dashboard(club_key, requests, stats, staff)

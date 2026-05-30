@@ -152,16 +152,16 @@ that every story builds on.
 
 ### Tests for User Story 4 ⚠️ (write first, must fail)
 
-- [ ] T042 [P] [US4] Contract test for `GET /api/director/requests` (requests + DirectorStats + `data_state`) and `POST /api/director/requests/{request_id}/resolve` (approve → status approved, `applied:true`; repeat → `applied:false`; deny path) in `tests/contract/test_coach_club_api.py`
-- [ ] T043 [P] [US4] Integration test asserting resolve is idempotent and a concurrent double-approve applies exactly once (relies on `SELECT … FOR UPDATE`), flipping `coaches.verified` once, in `tests/integration/test_coach_commands.py`
+- [X] T042 [P] [US4] Contract test for `GET /api/director/requests` (requests + DirectorStats + `data_state`) and `POST /api/director/requests/{request_id}/resolve` (approve → status approved, `applied:true`; repeat → `applied:false`; deny path) in `tests/contract/test_coach_club_api.py`
+- [X] T043 [P] [US4] Integration test asserting resolve is idempotent and a concurrent double-approve applies exactly once (relies on `SELECT … FOR UPDATE`), flipping `coaches.verified` once, in `tests/integration/test_coach_commands.py`
 
 ### Implementation for User Story 4
 
-- [ ] T044 [US4] Implement the director queue read (pending requests with match-strength %, DirectorStats `coaches`/`verified`/`pending`/`match_rate`, `data_state`) in `code/services/coach_queries.py`
-- [ ] T045 [US4] Implement `resolve_request` in `code/services/coach_commands.py` — `write_conn` + `SELECT … FOR UPDATE` on the request row, guard on `status='pending'`, approve → position `verified` + recompute `coaches.verified`, deny → position `denied`, otherwise idempotent no-op; director-token check via `rate_limit` (PR-2/PR-3)
-- [ ] T046 [US4] Add `GET /api/director/requests` and `POST /api/director/requests/{request_id}/resolve` endpoints plus the `/director` page route, with `logger.info` recording applied/no-op, in `code/api.py`
-- [ ] T047 [P] [US4] Create director dashboard template (pending queue: coach name/role/claimed years/match-strength %+bar/note + approve/deny; stats header; "all caught up" empty state) in `code/templates/director.html`
-- [ ] T048 [US4] Add director queue / stat-card styles to `code/static/css/club_analytics.css`
+- [X] T044 [US4] Implement the director queue read (pending requests with match-strength %, DirectorStats `coaches`/`verified`/`pending`/`match_rate`, `data_state`) in `code/services/coach_queries.py`
+- [X] T045 [US4] Implement `resolve_request` in `code/services/coach_commands.py` — `write_conn` + `SELECT … FOR UPDATE` on the request row, guard on `status='pending'`, approve → position `verified` + recompute `coaches.verified`, deny → position `denied`, otherwise idempotent no-op; director-token check via `rate_limit` (PR-2/PR-3)
+- [X] T046 [US4] Add `GET /api/director/requests` and `POST /api/director/requests/{request_id}/resolve` endpoints plus the `/director` page route, with `logger.info` recording applied/no-op, in `code/api.py`
+- [X] T047 [P] [US4] Create director dashboard template (pending queue: coach name/role/claimed years/match-strength %+bar/note + approve/deny; stats header; "all caught up" empty state) in `code/templates/director.html`
+- [X] T048 [US4] Add director queue / stat-card styles to `code/static/css/club_analytics.css`
 
 **Checkpoint**: The full coach loop (scout → endorse → claim → verify) works end-to-end and independently.
 

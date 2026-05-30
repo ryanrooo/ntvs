@@ -403,6 +403,67 @@ def compute_profile_strength(position_count: int, has_about: bool = False) -> in
     return max(0, min(100, strength))
 
 
+def _relative_time(value) -> str:
+    if not hasattr(value, "timestamp"):
+        return ""
+    from datetime import datetime, timezone
+
+    secs = (datetime.now(timezone.utc) - value).total_seconds()
+    if secs < 3600:
+        return f"{max(1, int(secs // 60))}m ago"
+    if secs < 86400:
+        return f"{int(secs // 3600)}h ago"
+    return f"{int(secs // 86400)}d ago"
+
+
+def build_director_dashboard(club_key, requests: list[dict], stats: dict, staff: list[dict]) -> dict:
+    shaped_requests = [
+        {
+            "request_id": r["request_id"],
+            "coach_key": r.get("coach_key"),
+            "club_key": r.get("club_key"),
+            "position_id": r.get("position_id"),
+            "name": r.get("name") or "",
+            "initials": r.get("initials") or _coach_initials(r.get("name")),
+            "color": r.get("color") or "#5bb8ff",
+            "role": r.get("role") or "",
+            "claim_years": r.get("claim_years") or "",
+            "match_strength": r.get("match_strength") or "Partial",
+            "match_pct": int(r.get("match_pct") or 0),
+            "note": r.get("note") or "",
+            "when": _relative_time(r.get("created_at")),
+        }
+        for r in requests
+    ]
+    shaped_staff = [
+        {
+            "coach_key": s.get("coach_key"),
+            "display_name": s.get("display_name") or "",
+            "initials": s.get("initials") or _coach_initials(s.get("display_name")),
+            "gradient": s.get("gradient") or "linear-gradient(135deg,#f5c518,#5bb8ff)",
+            "role": s.get("role") or "",
+            "verified": bool(s.get("verified")),
+        }
+        for s in staff
+    ]
+    return {
+        "club_key": club_key,
+        "requests": shaped_requests,
+        "stats": {
+            "coaches": int(stats.get("coaches") or 0),
+            "verified": int(stats.get("verified") or 0),
+            "pending": int(stats.get("pending") or 0),
+            "match_rate": int(stats.get("match_rate") or 0),
+        },
+        "staff": shaped_staff,
+        "data_state": serialize_data_state(
+            shaped_requests,
+            partial=not club_key,
+            message="All caught up — no pending requests." if not shaped_requests else "Director queue loaded.",
+        ),
+    }
+
+
 def build_coach_profile(coach: dict, positions: list[dict], endorsements: list[dict]) -> dict:
     summary = build_endorsement_summary(endorsements)
     career = [_build_position(p) for p in positions]

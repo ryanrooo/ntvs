@@ -745,3 +745,52 @@ tbody tr:hover { background: rgba(34,211,238,0.03); }
   .stepper { overflow-x: auto; }
   .editor-head { flex-direction: column; align-items: flex-start; }
 }
+
+/* ════════════ Director dashboard (US4, screenshot 11) ════════════ */
+.dir-dash-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 26px; }
+.dir-dash-id { display: flex; align-items: center; gap: 14px; }
+.dir-badge { width: 44px; height: 44px; border-radius: 12px; background: var(--accent); color: #0a0a0a; display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 1rem; flex: none; }
+
+.dir-layout { display: grid; grid-template-columns: 1.4fr 1fr; gap: 32px; align-items: start; }
+.dir-main { min-width: 0; }
+.dir-pending-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+
+.req-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; margin-bottom: 16px; }
+.req-top { display: flex; align-items: center; gap: 14px; }
+.req-id { flex: 1; min-width: 0; }
+.req-name { font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; color: var(--fg); }
+.req-role { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
+.req-when { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
+.req-match { display: flex; align-items: center; gap: 12px; margin: 14px 0; }
+.match-bar { flex: 1; height: 8px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.match-fill { height: 100%; border-radius: 999px; background: var(--accent); }
+.match-fill.is-strong { background: var(--win); }
+.match-pct { font-size: 0.78rem; color: var(--fg-2); }
+.req-note { font-size: 0.82rem; color: var(--muted); margin-bottom: 14px; }
+.req-actions { display: flex; align-items: center; gap: 10px; }
+.btn-deny { background: none; border: 0; color: var(--loss); font-size: 0.82rem; font-weight: 600; cursor: pointer; padding: 8px 12px; margin-left: auto; border-radius: 8px; font-family: inherit; }
+.btn-deny:hover { background: var(--loss-dim); }
+
+.dir-side { display: flex; flex-direction: column; gap: 16px; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; }
+.stat-box .stat-num { font-size: 1.9rem; }
+.stat-box .stat-lbl { display: block; margin-top: 4px; }
+
+.staff-title, .info-title { font-family: var(--font-display); font-size: 1.05rem; color: var(--fg); margin-bottom: 14px; }
+.staff-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border-soft); }
+.staff-row:first-of-type { border-top: 0; }
+.staff-id { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.staff-name { font-weight: 600; font-size: 0.88rem; color: var(--fg); }
+.staff-name:hover { color: var(--accent); }
+.staff-role { font-size: 0.74rem; color: var(--muted); }
+.staff-verified { font-size: 0.72rem; font-weight: 700; color: var(--cyan); white-space: nowrap; }
+.staff-pending { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
+.info-card p { font-size: 0.82rem; color: var(--fg-2); line-height: 1.55; }
+
+@media (max-width: 900px) {
+  .dir-layout { grid-template-columns: 1fr; }
+  .dir-dash-head { flex-direction: column; align-items: flex-start; }
+  .req-actions { flex-wrap: wrap; }
+  .btn-deny { margin-left: 0; }
+}

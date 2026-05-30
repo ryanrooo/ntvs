@@ -13,7 +13,7 @@ from typing import Any
 
 from psycopg2.extras import RealDictCursor
 
-from . import db
+from . import db, rate_limit
 from .club_normalization import slugify_club_name
 
 
@@ -204,3 +204,45 @@ def create_verification_request(coach_key, club_key, position_id=None, note=None
             )
             row = cur.fetchone()
     return {"request_id": row["request_id"], "status": row["status"], "applied": True}
+
+
+def resolve_request(request_id, decision, token=None) -> dict:
+    """Approve or deny a pending verification request (FR-017).
+
+    Idempotent: a no-op when the request is already resolved or missing. Locks the
+    request row with SELECT … FOR UPDATE so two concurrent approvals apply exactly
+    once (PR-2). Approve flips the linked position to verified and recomputes
+    coaches.verified; deny flips the position to denied.
+    """
+    if not rate_limit.verify_director_token(token):
+        return {"request_id": request_id, "status": None, "applied": False, "error": "unauthorized"}
+    decision = "approve" if decision == "approve" else "deny"
+    with db.write_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT request_id, coach_key, club_key, position_id, status "
+                "FROM ntvs.verification_requests WHERE request_id = %s FOR UPDATE",
+                (request_id,),
+            )
+            req = cur.fetchone()
+            if req is None:
+                return {"request_id": request_id, "status": None, "applied": False}
+            if req["status"] != "pending":
+                return {"request_id": request_id, "status": req["status"], "applied": False}
+
+            if decision == "approve":
+                if req["position_id"]:
+                    cur.execute("UPDATE ntvs.coach_positions SET status = 'verified' WHERE position_id = %s", (req["position_id"],))
+                cur.execute(
+                    "UPDATE ntvs.coaches SET club_key = COALESCE(club_key, %s) WHERE coach_key = %s",
+                    (req["club_key"], req["coach_key"]),
+                )
+                cur.execute("UPDATE ntvs.verification_requests SET status = 'approved', resolved_at = now() WHERE request_id = %s", (request_id,))
+                _recompute_coach_verified(cur, req["coach_key"])
+                new_status = "approved"
+            else:
+                if req["position_id"]:
+                    cur.execute("UPDATE ntvs.coach_positions SET status = 'denied' WHERE position_id = %s", (req["position_id"],))
+                cur.execute("UPDATE ntvs.verification_requests SET status = 'denied', resolved_at = now() WHERE request_id = %s", (request_id,))
+                new_status = "denied"
+    return {"request_id": request_id, "status": new_status, "applied": True}

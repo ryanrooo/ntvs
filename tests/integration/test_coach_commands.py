@@ -4,6 +4,7 @@ Skips when no database is reachable. Uses a seeded coach plus a unique author
 label, and cleans up after itself so reruns stay green.
 """
 import sys
+import threading
 from pathlib import Path
 
 import pytest
@@ -124,3 +125,77 @@ def test_create_verification_request_dedupes_pending():
         assert again["applied"] is False and again["request_id"] == first["request_id"]
     finally:
         _cleanup_req()
+
+
+# ── US4: director resolve (idempotency + concurrency) ──────────────────────
+
+def _make_pending_request():
+    """Throwaway coach + pending position + pending request. Returns (request_id, position_id)."""
+    with db.write_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO ntvs.coaches (coach_key, display_name, base_slug, verified) "
+                "VALUES ('pytest-coach', 'Pytest Coach', 'pytest-coach', FALSE) "
+                "ON CONFLICT (coach_key) DO UPDATE SET verified = FALSE, club_key = NULL"
+            )
+            cur.execute("DELETE FROM ntvs.coach_positions WHERE coach_key = 'pytest-coach'")
+            cur.execute(
+                "INSERT INTO ntvs.coach_positions (coach_key, club_label, role, status) "
+                "VALUES ('pytest-coach', 'Pytest FC', 'Head Coach', 'pending') RETURNING position_id"
+            )
+            pid = cur.fetchone()[0]
+            cur.execute("DELETE FROM ntvs.verification_requests WHERE coach_key = 'pytest-coach'")
+            cur.execute(
+                "INSERT INTO ntvs.verification_requests (coach_key, club_key, position_id, name, status) "
+                "VALUES ('pytest-coach', 'pytest-fc', %s, 'Pytest Coach', 'pending') RETURNING request_id",
+                (pid,),
+            )
+            rid = cur.fetchone()[0]
+    return rid, pid
+
+
+def _cleanup_test_coach():
+    with db.write_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM ntvs.coaches WHERE coach_key = 'pytest-coach'")  # cascades to positions/requests
+
+
+def test_resolve_approve_flips_verified_and_is_idempotent():
+    rid, pid = _make_pending_request()
+    try:
+        first = coach_commands.resolve_request(rid, "approve")
+        assert first["applied"] is True and first["status"] == "approved"
+        with db.read_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT status FROM ntvs.coach_positions WHERE position_id = %s", (pid,))
+                assert cur.fetchone()[0] == "verified"
+                cur.execute("SELECT verified FROM ntvs.coaches WHERE coach_key = 'pytest-coach'")
+                assert cur.fetchone()[0] is True
+        again = coach_commands.resolve_request(rid, "approve")
+        assert again["applied"] is False and again["status"] == "approved"
+    finally:
+        _cleanup_test_coach()
+
+
+def test_resolve_missing_request_is_safe_noop():
+    assert coach_commands.resolve_request(999999999, "approve")["applied"] is False
+
+
+def test_concurrent_approve_applies_exactly_once():
+    rid, _pid = _make_pending_request()
+    results = []
+    barrier = threading.Barrier(2)
+
+    def worker():
+        barrier.wait()
+        results.append(coach_commands.resolve_request(rid, "approve"))
+
+    try:
+        threads = [threading.Thread(target=worker) for _ in range(2)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        assert sum(1 for r in results if r.get("applied")) == 1  # SELECT … FOR UPDATE serializes
+    finally:
+        _cleanup_test_coach()
