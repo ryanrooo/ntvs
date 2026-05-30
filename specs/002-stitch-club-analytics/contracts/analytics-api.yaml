@@ -1,0 +1,367 @@
+openapi: 3.1.0
+info:
+  title: NTVS Club Analytics API
+  version: 0.1.0
+  description: >
+    Read-only analytics contracts backing the Stitch-matched NTVS homepage, Saturday pool
+    results, club rankings/profile, and club comparison experiences.
+servers:
+  - url: http://localhost:8000
+paths:
+  /api/home:
+    get:
+      summary: Get homepage analytics content
+      parameters:
+        - in: query
+          name: tournament_id
+          schema:
+            type: string
+          required: false
+      responses:
+        '200':
+          description: Homepage content and featured summaries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HomeResponse'
+  /api/pool-results:
+    get:
+      summary: Get Saturday pool results filtered by tournament context
+      parameters:
+        - in: query
+          name: tournament_id
+          schema:
+            type: string
+        - in: query
+          name: age_group
+          schema:
+            type: string
+        - in: query
+          name: division
+          schema:
+            type: string
+        - in: query
+          name: club_name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pool result groups for the requested filters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoolResultsResponse'
+  /api/clubs:
+    get:
+      summary: Search and rank clubs
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [rank, teams, win_rate, recent_form]
+        - in: query
+          name: division
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Club discovery list with ranking summaries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubListResponse'
+  /api/clubs/{club_key}:
+    get:
+      summary: Get a single club profile
+      parameters:
+        - in: path
+          name: club_key
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Club profile and related team performance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubProfileResponse'
+        '404':
+          description: Club not found
+  /api/clubs/compare:
+    get:
+      summary: Compare two clubs
+      parameters:
+        - in: query
+          name: club_a
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: club_b
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Side-by-side club comparison and shared matchup history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubComparisonResponse'
+components:
+  schemas:
+    HomeResponse:
+      type: object
+      required: [featured_tournament, featured_pools, featured_clubs, data_state]
+      properties:
+        featured_tournament:
+          $ref: '#/components/schemas/TournamentSummary'
+        featured_pools:
+          type: array
+          items:
+            $ref: '#/components/schemas/PoolSummary'
+        featured_clubs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClubRankingRow'
+        featured_matchups:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatchupSummary'
+        data_state:
+          $ref: '#/components/schemas/DataState'
+    PoolResultsResponse:
+      type: object
+      required: [filters, pools, data_state]
+      properties:
+        filters:
+          type: object
+          additionalProperties:
+            type: string
+        pools:
+          type: array
+          items:
+            $ref: '#/components/schemas/PoolDetail'
+        data_state:
+          $ref: '#/components/schemas/DataState'
+    ClubListResponse:
+      type: object
+      required: [clubs, data_state]
+      properties:
+        clubs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClubRankingRow'
+        data_state:
+          $ref: '#/components/schemas/DataState'
+    ClubProfileResponse:
+      type: object
+      required: [club, teams, recent_tournaments, data_state]
+      properties:
+        club:
+          $ref: '#/components/schemas/ClubProfile'
+        teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamPerformance'
+        recent_tournaments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TournamentSummary'
+        recent_matchups:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatchupSummary'
+        data_state:
+          $ref: '#/components/schemas/DataState'
+    ClubComparisonResponse:
+      type: object
+      required: [club_a, club_b, comparison_metrics, head_to_head, data_state]
+      properties:
+        club_a:
+          $ref: '#/components/schemas/ClubProfile'
+        club_b:
+          $ref: '#/components/schemas/ClubProfile'
+        comparison_metrics:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComparisonMetric'
+        head_to_head:
+          $ref: '#/components/schemas/HeadToHeadSummary'
+        shared_matchups:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatchupSummary'
+        data_state:
+          $ref: '#/components/schemas/DataState'
+    TournamentSummary:
+      type: object
+      properties:
+        tournament_id:
+          type: string
+        name:
+          type: string
+        divisions:
+          type: array
+          items:
+            type: string
+    PoolSummary:
+      type: object
+      properties:
+        pool_id:
+          type: string
+        pool_name:
+          type: string
+        division:
+          type: string
+        tournament_id:
+          type: string
+    PoolDetail:
+      allOf:
+        - $ref: '#/components/schemas/PoolSummary'
+        - type: object
+          properties:
+            standings:
+              type: array
+              items:
+                $ref: '#/components/schemas/StandingRow'
+            matchups:
+              type: array
+              items:
+                $ref: '#/components/schemas/MatchupSummary'
+    StandingRow:
+      type: object
+      properties:
+        rank:
+          type: integer
+        team_name:
+          type: string
+        club_key:
+          type: string
+        matches_record:
+          type: string
+        sets_record:
+          type: string
+        point_diff:
+          type: integer
+        status_label:
+          type: string
+    ClubRankingRow:
+      type: object
+      properties:
+        club_key:
+          type: string
+        display_name:
+          type: string
+        rank:
+          type: integer
+        teams_active:
+          type: integer
+        win_rate:
+          type: number
+        trend_label:
+          type: string
+    ClubProfile:
+      type: object
+      properties:
+        club_key:
+          type: string
+        source_club_name:
+          type: string
+        display_name:
+          type: string
+        normalization_status:
+          type: string
+        teams_active:
+          type: integer
+        win_rate:
+          type: number
+        ranking_score:
+          type: number
+        latest_activity_date:
+          type: string
+          format: date
+    TeamPerformance:
+      type: object
+      properties:
+        team_name:
+          type: string
+        division:
+          type: string
+        matches_won:
+          type: integer
+        matches_lost:
+          type: integer
+        points_diff:
+          type: integer
+    ClubAliasMapping:
+      type: object
+      properties:
+        source_club_name:
+          type: string
+        base_slug:
+          type: string
+        club_key:
+          type: string
+        display_name:
+          type: string
+        normalization_status:
+          type: string
+    ComparisonMetric:
+      type: object
+      properties:
+        label:
+          type: string
+        club_a_value:
+          oneOf:
+            - type: string
+            - type: number
+        club_b_value:
+          oneOf:
+            - type: string
+            - type: number
+    HeadToHeadSummary:
+      type: object
+      properties:
+        matches_played:
+          type: integer
+        club_a_wins:
+          type: integer
+        club_b_wins:
+          type: integer
+        latest_meeting:
+          type: string
+          format: date
+        available:
+          type: boolean
+    MatchupSummary:
+      type: object
+      properties:
+        match_id:
+          type: string
+        tournament_id:
+          type: string
+        pool_id:
+          type: string
+        team_name:
+          type: string
+        opponent_name:
+          type: string
+        outcome:
+          type: string
+        score_log:
+          type: string
+    DataState:
+      type: object
+      properties:
+        completeness:
+          type: string
+          enum: [complete, partial, empty]
+        message:
+          type: string

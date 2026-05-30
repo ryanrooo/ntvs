@@ -1,0 +1,291 @@
+{% extends "layout.html" %}
+{% block title %}{{ club.display_name }} — NTVS{% endblock %}
+{% block content %}
+
+{# ── Hero ─────────────────────────────────────────────────── #}
+<section class="hero compact">
+  <div class="hero-copy">
+    <span class="eyebrow">Club Profile</span>
+    <h1>{{ club.display_name }}</h1>
+    {% if selected_team_data %}
+      <p>
+        {{ selected_team_data.team_name }}
+        &bull; Division {{ selected_team_data.division }}
+        &bull; {{ selected_team_data.matches_won }}W – {{ selected_team_data.matches_lost }}L pool record
+      </p>
+    {% else %}
+      <p>
+        {{ club.teams_active }} active teams
+        &bull; {{ "%.1f"|format(club.win_rate * 100) }}% win rate
+        &bull; {{ club.ranking_score|int }} ranking score
+      </p>
+    {% endif %}
+  </div>
+  <div class="hero-card">
+    <h2>Titles</h2>
+    {% if champions %}
+      <div style="display:grid;gap:6px">
+        {% for p in champions[:5] %}
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--card-3);border:1px solid var(--border);border-radius:6px">
+            <span style="font-size:0.82rem;font-weight:700;color:var(--text)">{{ p.bracket_tier }}</span>
+            <span style="font-size:0.74rem;color:var(--muted)">{{ p.tournament_name }} · Div {{ p.division }}</span>
+          </div>
+        {% endfor %}
+        {% if champions|length > 5 %}
+          <div style="padding:6px 12px;font-size:0.77rem;color:var(--muted)">+{{ champions|length - 5 }} more</div>
+        {% endif %}
+      </div>
+    {% else %}
+      <p style="color:var(--muted);font-size:0.875rem">No titles recorded yet.</p>
+    {% endif %}
+  </div>
+</section>
+
+{# ── Team Selector ────────────────────────────────────────── #}
+{% if teams %}
+<div style="margin-top:24px;margin-bottom:8px">
+  <div class="team-pills">
+    <a href="/clubs/{{ club.club_key }}"
+       class="pill {{ 'pill-active' if not selected_team else 'pill-inactive' }}">
+      All Teams
+    </a>
+    {% for t in teams %}
+      {% set label = t.team_name.split(' ', 1)[1] if ' ' in t.team_name else t.team_name %}
+      <a href="/clubs/{{ club.club_key }}?team={{ t.team_name | urlencode }}"
+         class="pill {{ 'pill-active' if selected_team == t.team_name else 'pill-inactive' }}">
+        <span class="pill-div">{{ t.division }}</span>{{ label }}
+      </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# ══════════════════════════════════════════════════════════
+   TEAM SEASON VIEW
+   ══════════════════════════════════════════════════════════ #}
+{% if selected_team_data %}
+  {% set ts = selected_team_data %}
+
+  <div class="stats-strip" style="margin-top:20px">
+    <div class="stat-cell">
+      <div class="stat-val win">{{ ts.matches_won }}</div>
+      <div class="stat-lbl">Pool Wins</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-val loss">{{ ts.matches_lost }}</div>
+      <div class="stat-lbl">Pool Losses</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-val neutral">{{ ts.tournaments|length }}</div>
+      <div class="stat-lbl">Tournaments</div>
+    </div>
+    <div class="stat-cell">
+      {% set titles = namespace(n=0) %}
+      {% for t in ts.tournaments %}{% if t.bracket_placement == 1 %}{% set titles.n = titles.n + 1 %}{% endif %}{% endfor %}
+      <div class="stat-val">{{ titles.n }}</div>
+      <div class="stat-lbl">Titles</div>
+    </div>
+  </div>
+
+  {% if ts.tournaments %}
+    {% for tourney in ts.tournaments %}
+    <div class="pool-card season-block">
+      <div class="pool-card-head">
+        <div>
+          <div class="pool-label">{{ tourney.tournament_id }}</div>
+          <h2 style="margin-top:4px">{{ tourney.tournament_name }}</h2>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          {% if tourney.bracket_placement == 1 %}
+            <span class="champ-badge">&#127942; {{ tourney.bracket_tier }} Champ</span>
+          {% elif tourney.bracket_tier %}
+            <span class="tier-badge">{{ tourney.bracket_tier }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div style="padding:20px">
+
+        {% if tourney.pool_matches %}
+          <div class="sub-head">Pool Play</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Opponent</th><th>Result</th><th>Score</th></tr></thead>
+              <tbody>
+                {% for m in tourney.pool_matches %}
+                <tr>
+                  <td>{{ m.opponent_name }}</td>
+                  <td>
+                    {% if m.outcome == 'Won' %}<span class="badge badge-win">W</span>
+                    {% elif m.outcome == 'Lost' %}<span class="badge badge-loss">L</span>
+                    {% else %}<span style="color:var(--muted)">—</span>{% endif %}
+                  </td>
+                  <td class="score-cell">{{ m.score_log or "—" }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+
+        {% if tourney.bracket_matches %}
+          <div class="sub-head">{{ tourney.bracket_tier or "Bracket" }}</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Round</th><th>Opponent</th><th>Result</th><th>Score</th></tr></thead>
+              <tbody>
+                {% for m in tourney.bracket_matches %}
+                <tr>
+                  <td class="round-cell">{{ m.round_label }}</td>
+                  <td>{{ m.opponent_name }}</td>
+                  <td>
+                    {% if m.outcome == 'Won' %}<span class="badge badge-win">W</span>
+                    {% elif m.outcome == 'Lost' %}<span class="badge badge-loss">L</span>
+                    {% else %}<span style="color:var(--muted)">—</span>{% endif %}
+                  </td>
+                  <td class="score-cell">{{ m.score_log or "—" }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+
+        {% if not tourney.pool_matches and not tourney.bracket_matches %}
+          <div class="empty-state">No match data for this tournament.</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state" style="margin-top:20px">No tournament data for {{ ts.team_name }}.</div>
+  {% endif %}
+
+{# ══════════════════════════════════════════════════════════
+   ALL TEAMS VIEW
+   ══════════════════════════════════════════════════════════ #}
+{% else %}
+
+  <div class="stats-strip" style="margin-top:24px">
+    <div class="stat-cell">
+      <div class="stat-val neutral">{{ club.teams_active }}</div>
+      <div class="stat-lbl">Teams Active</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-val">{{ "%.0f"|format(club.win_rate * 100) }}%</div>
+      <div class="stat-lbl">Win Rate</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-val neutral">{{ club.ranking_score|int }}</div>
+      <div class="stat-lbl">Ranking Score</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-val">{{ champions|length }}</div>
+      <div class="stat-lbl">Titles</div>
+    </div>
+  </div>
+
+  <div class="section-grid" style="margin-top:4px">
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:18px 24px;border-bottom:1px solid var(--border)"><h2 style="font-size:0.9rem">Teams</h2></div>
+      <div style="padding:16px">
+        {% if teams %}
+          <ul class="compact-list">
+            {% for t in teams %}
+              <li>
+                <div>
+                  <a href="/clubs/{{ club.club_key }}?team={{ t.team_name | urlencode }}"
+                     style="font-weight:700;font-size:0.875rem;color:var(--text)">{{ t.team_name }}</a>
+                  <div style="font-size:0.75rem;color:var(--muted);margin-top:2px">Division {{ t.division }}</div>
+                </div>
+                <span style="font-family:'Space Grotesk',sans-serif;font-size:0.84rem;font-weight:700;white-space:nowrap;color:var(--text-2)">
+                  {{ t.matches_won }}–{{ t.matches_lost }}
+                </span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="empty-state">No teams on record.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:18px 24px;border-bottom:1px solid var(--border)"><h2 style="font-size:0.9rem">Recent Tournaments</h2></div>
+      <div style="padding:16px">
+        {% if recent_tournaments %}
+          <ul class="compact-list">
+            {% for t in recent_tournaments %}
+              <li>
+                <div>
+                  <strong>{{ t.name }}</strong>
+                  <div style="font-size:0.75rem;color:var(--muted);margin-top:2px">{{ t.tournament_id }}</div>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="empty-state">No tournament history.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border)"><h2 style="font-size:0.9rem">Recent Pool Matchups</h2></div>
+    {% if recent_matchups %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Team</th><th>Opponent</th><th>Result</th><th>Score</th></tr></thead>
+          <tbody>
+            {% for m in recent_matchups %}
+              <tr>
+                <td><span class="fw">{{ m.team_name }}</span></td>
+                <td>{{ m.opponent_name }}</td>
+                <td>
+                  {% if m.outcome == 'Won' %}<span class="badge badge-win">W</span>
+                  {% elif m.outcome == 'Lost' %}<span class="badge badge-loss">L</span>
+                  {% else %}<span style="color:var(--muted)">—</span>{% endif %}
+                </td>
+                <td class="score-cell">{{ m.score_log or "—" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div style="padding:24px"><div class="empty-state">No recent pool matches.</div></div>
+    {% endif %}
+  </div>
+
+  {% if recent_bracket_matchups %}
+  <div class="card" style="padding:0;overflow:hidden;margin-top:4px">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border)"><h2 style="font-size:0.9rem">Recent Bracket Matchups</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Team</th><th>Bracket</th><th>Round</th><th>Opponent</th><th>Result</th><th>Score</th></tr>
+        </thead>
+        <tbody>
+          {% for m in recent_bracket_matchups %}
+            <tr>
+              <td><span class="fw">{{ m.team_name }}</span></td>
+              <td><span class="tier-badge">{{ m.bracket_tier }}</span></td>
+              <td class="round-cell">{{ m.round_label }}</td>
+              <td>{{ m.opponent_name }}</td>
+              <td>
+                {% if m.outcome == 'Won' %}<span class="badge badge-win">W</span>
+                {% elif m.outcome == 'Lost' %}<span class="badge badge-loss">L</span>
+                {% else %}<span style="color:var(--muted)">—</span>{% endif %}
+              </td>
+              <td class="score-cell">{{ m.score_log or "—" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+{% endif %}
+
+{% endblock %}

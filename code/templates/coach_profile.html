@@ -1,0 +1,217 @@
+{% extends "layout.html" %}
+{% block title %}{{ coach.display_name }} — NTVS{% endblock %}
+{% block content %}
+
+<a class="back-link" href="/coaches">← All coaches</a>
+
+<div class="coach-layout">
+  <aside class="coach-sidebar">
+    <span class="avatar avatar-lg" style="background:{{ coach.gradient }}">{{ coach.initials }}</span>
+    <div>
+      <div class="sb-name">{{ coach.display_name }}</div>
+      {% if verified %}
+        <span class="sb-verified">✔ Verified coach</span>
+      {% else %}
+        <span class="sb-unverified">○ Unverified · pending</span>
+      {% endif %}
+    </div>
+    <div class="sb-role">{{ coach.role }}</div>
+    <div class="sb-club">
+      {% if coach.club_key %}<a href="/clubs/{{ coach.club_key }}">{{ coach.club_label }}</a>{% else %}{{ coach.club_label }}{% endif %}{% if city %} · {{ city }}{% endif %}
+    </div>
+
+    <div class="sb-actions">
+      <a class="btn btn-primary" href="#" title="Coming soon">Contact</a>
+      <a class="btn" href="#" title="Coming soon">Follow</a>
+    </div>
+    <a class="btn sb-edit" href="#" title="Résumé editor — coming soon">This is me — edit profile</a>
+
+    <div class="sb-divider"></div>
+    <div class="sb-section">
+      <span class="label">Career totals</span>
+      <div class="totals-list">
+        <div class="totals-row"><span>Matches won</span><span class="v">{{ totals.wins }}</span></div>
+        <div class="totals-row"><span>Win rate</span><span class="v">{{ "%.0f"|format(totals.win_rate * 100) }}%</span></div>
+        <div class="totals-row"><span>College commits</span><span class="v">{{ totals.commits }}</span></div>
+        <div class="totals-row"><span>Gold finishes</span><span class="v">{{ totals.gold }}</span></div>
+        <div class="totals-row"><span>Seasons</span><span class="v">{{ totals.seasons }}</span></div>
+      </div>
+    </div>
+
+    {% if certifications %}
+      <div class="sb-divider"></div>
+      <div class="sb-section">
+        <span class="label">Certifications</span>
+        <div class="cert-list">{% for c in certifications %}<div class="cert-row">{{ c }}</div>{% endfor %}</div>
+      </div>
+    {% endif %}
+  </aside>
+
+  <div class="coach-main">
+    <div class="tabs" data-tabs>
+      <div class="tab-bar">
+        <button type="button" class="tab-btn is-active" data-tab="overview">Overview</button>
+        <button type="button" class="tab-btn" data-tab="teams">Teams</button>
+        <button type="button" class="tab-btn" data-tab="endorsements">Endorsements · {{ endorsement_summary.count }}</button>
+      </div>
+
+      <section class="tab-panel is-active" data-panel="overview">
+        {% if verified and coach.club_key %}
+          <div class="connected-banner">
+            <span class="ic">🔗</span>
+            <div>
+              <strong>Profile connected to {{ coach.club_label }}</strong>
+              <small>Verified by club director · {{ verified_positions }} linked program{{ '' if verified_positions == 1 else 's' }}</small>
+            </div>
+          </div>
+        {% endif %}
+
+        <h2 class="section-title">Coaching career</h2>
+        <p class="section-sub">Club &amp; team history from this coach's résumé.</p>
+
+        {% if career %}
+          <div class="career">
+            {% for p in career %}
+              <div class="career-item">
+                <span class="career-dot" style="background:{{ p.club_color }}"></span>
+                <div class="career-card">
+                  <div>
+                    <div class="career-club">
+                      <span class="swatch" style="background:{{ p.club_color }}"></span>
+                      {% if p.club_key %}<a href="/clubs/{{ p.club_key }}" style="color:inherit">{{ p.club_label }}</a>{% else %}{{ p.club_label }}{% endif %}
+                      {% if p.status == 'verified' %}<span class="chip chip-verified status-chip">Verified</span>
+                      {% elif p.status == 'denied' %}<span class="chip chip-denied status-chip">Denied</span>
+                      {% else %}<span class="chip chip-pending status-chip">Pending</span>{% endif %}
+                    </div>
+                    <div class="career-role">{{ p.role }}{% if p.age_group %} · {{ p.age_group }}{% endif %}</div>
+                    {% if p.note %}<div class="career-note">{{ p.note }}</div>{% endif %}
+                  </div>
+                  <div class="career-right">
+                    {% if p.years %}<div class="career-years">{{ p.years }}</div>{% endif %}
+                    {% if p.record %}<div class="career-record">{{ p.record }}</div>{% endif %}
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state">No career history recorded yet.</div>
+        {% endif %}
+      </section>
+
+      <section class="tab-panel" data-panel="teams">
+        {% if teams %}
+          <div class="team-list">
+            {% for t in teams %}
+              <div class="team-card">
+                <div class="t-age">{{ t.age_group or 'Team' }}</div>
+                <div class="t-club">{% if t.club_key %}<a href="/clubs/{{ t.club_key }}">{{ t.club_label }}</a>{% else %}{{ t.club_label }}{% endif %}{% if t.years %} · {{ t.years }}{% endif %}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state">No teams recorded yet.</div>
+        {% endif %}
+      </section>
+
+      <section class="tab-panel" data-panel="endorsements">
+        <div class="endorse-layout">
+          <div class="endorse-main">
+            {% set avg_filled = endorsement_summary.avg_rating | round(0, 'common') | int %}
+            <div class="strengths-card">
+              <div class="strengths-rating">
+                <span class="endorse-avg">{{ "%.1f"|format(endorsement_summary.avg_rating) }}</span>
+                <div class="strengths-stars">{{ '★' * avg_filled }}{{ '☆' * (5 - avg_filled) }}</div>
+                <span class="endorse-count"><span id="endorse-count">{{ endorsement_summary.count }}</span> endorsements</span>
+              </div>
+              {% if endorsement_summary.most_mentioned %}
+                <div class="strengths-tags">
+                  <span class="label">Most mentioned strengths</span>
+                  <div class="strengths-chiprow">
+                    {% for m in endorsement_summary.most_mentioned %}<span class="chip chip-cyan">{{ m.tag }} · {{ m.count }}</span>{% endfor %}
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+
+            <ul class="endorse-list" id="endorse-list">
+              {% for e in endorsements %}
+                <li class="endorse-item">
+                  <div class="endorse-head">
+                    <span class="endorse-avatar">{{ e.author_label[:1] | upper }}</span>
+                    <div class="endorse-who"><strong>{{ e.author_label }}</strong><span class="endorse-rel">{{ e.relationship }}</span></div>
+                    <span class="endorse-stars">{{ '★' * e.stars }}</span>
+                    <span class="endorse-date">{{ e.date }}</span>
+                  </div>
+                  <p class="endorse-body">{{ e.body }}</p>
+                  {% if e.tags %}<div class="endorse-chiprow">{% for t in e.tags %}<span class="chip">{{ t }}</span>{% endfor %}</div>{% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+            <div class="empty-state" id="endorse-empty"{% if endorsements %} style="display:none"{% endif %}>No endorsements yet — be the first to support this coach.</div>
+          </div>
+
+          <aside class="endorse-composer card">
+            <h3 class="composer-title">Leave an endorsement</h3>
+            <div class="composer-note">👍 NTVS endorsements are <strong>positive-only</strong>. Share what a coach does well — concerns go through your club director privately.</div>
+            <form id="endorse-form" data-coach="{{ coach.coach_key }}" autocomplete="off">
+              <span class="label">Your rating</span>
+              <div class="star-picker" id="star-picker">
+                <button type="button" class="star is-locked" data-val="1" disabled title="Positive-only">★</button>
+                <button type="button" class="star is-locked" data-val="2" disabled title="Positive-only">★</button>
+                <button type="button" class="star is-locked" data-val="3" disabled title="Positive-only">★</button>
+                <button type="button" class="star" data-val="4">★</button>
+                <button type="button" class="star" data-val="5">★</button>
+                <span class="star-label" id="star-label">Pick 4 or 5</span>
+              </div>
+              <input type="hidden" name="stars" id="f-stars" />
+
+              <span class="label">Your relationship</span>
+              <div class="pill-row" id="rel-row">
+                {% for r in ["Parent", "Player", "Fellow coach", "Club staff"] %}<button type="button" class="pill" data-rel="{{ r }}">{{ r }}</button>{% endfor %}
+              </div>
+              <input type="hidden" name="relationship" id="f-rel" />
+              <input class="composer-input" name="author_label" id="f-author" maxlength="80" placeholder="Label (optional) — e.g. Parent of an OH" />
+
+              <span class="label">What stood out? <small>(pick a few)</small></span>
+              <div class="pill-row" id="tag-row">
+                {% for t in ["Great communicator", "Develops players", "Positive culture", "Knows the game", "Recruiting help", "Punctual", "Team-first", "Motivating"] %}<button type="button" class="pill tag" data-tag="{{ t }}">{{ t }}</button>{% endfor %}
+              </div>
+
+              <span class="label">Your endorsement</span>
+              <textarea name="body" id="f-body" rows="4" maxlength="500" placeholder="Share what this coach does well…"></textarea>
+              <div class="composer-foot">
+                <span class="tone-ind" id="tone-ind"></span>
+                <span class="char-count"><span id="char-now">0</span> / 500</span>
+              </div>
+
+              <input type="text" name="website" class="hp-field" tabindex="-1" aria-hidden="true" autocomplete="off" />
+              <button type="submit" class="btn btn-primary composer-submit" id="composer-submit">Post endorsement</button>
+              <div class="composer-msg" id="composer-msg" role="status"></div>
+              <p class="composer-fine">Posts publicly under your label. Endorsements are screened to keep this space supportive.</p>
+            </form>
+          </aside>
+        </div>
+      </section>
+    </div>
+
+    {% if about %}
+      <section class="card" style="padding:20px;margin-top:22px">
+        <span class="label" style="display:block;margin-bottom:8px">About</span>
+        <p style="color:var(--fg-2)">{{ about }}</p>
+      </section>
+    {% endif %}
+    {% if specialties %}
+      <section class="card" style="padding:20px;margin-top:16px">
+        <span class="label" style="display:block;margin-bottom:10px">Specialties</span>
+        {% for s in specialties %}<span class="chip chip-amber" style="margin:0 6px 6px 0">{{ s }}</span>{% endfor %}
+      </section>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ request.url_for('static', path='/js/endorse.js') }}?v={{ asset_v }}" defer></script>
+{% endblock %}

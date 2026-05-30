@@ -7,6 +7,8 @@ env/
 # Python
 __pycache__/
 *.py[cod]
+*.egg-info/
+.pytest_cache/
 
 # Logs
 app.log
@@ -18,6 +20,20 @@ logs/
 
 # System
 .DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/
 
 # Secrets
 .env
+.env*
+
+# Database backups
+*.dump
+*.sql.gz
+
+# Local Claude settings + redundant design archive (extracted folder is kept)
+.claude/settings.local.json
+NTVS-2.zip

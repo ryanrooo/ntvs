@@ -1,0 +1,76 @@
+{% extends "layout.html" %}
+{% block title %}Club Rankings — NTVS{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <span class="eyebrow">Region 24</span>
+  <h1>Club Rankings</h1>
+  <p>Search and rank clubs by overall score, team count, or win rate across all recorded tournaments.</p>
+</div>
+
+<section class="filters-bar">
+  <form action="/clubs" method="get" class="filter-grid">
+    <label>Search
+      <input type="text" name="q" value="{{ query.q }}" placeholder="Club name…" />
+    </label>
+    <label>Sort by
+      <select name="sort">
+        <option value="rank"     {% if query.sort == 'rank'     %}selected{% endif %}>Overall Rank</option>
+        <option value="teams"    {% if query.sort == 'teams'    %}selected{% endif %}>Total Teams</option>
+        <option value="win_rate" {% if query.sort == 'win_rate' %}selected{% endif %}>Win Rate</option>
+      </select>
+    </label>
+    <label>Division
+      <input type="text" name="division" value="{{ query.division }}" placeholder="e.g. 14A" />
+    </label>
+    <button type="submit">Apply</button>
+  </form>
+</section>
+
+{% if clubs %}
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:60px">Rank</th>
+            <th>Club</th>
+            <th>Teams</th>
+            <th>Win Rate</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for club in clubs %}
+            <tr>
+              <td>
+                <span class="rank-num">{{ club.rank }}</span>
+              </td>
+              <td>
+                <a href="/clubs/{{ club.club_key }}" class="club-link">{{ club.display_name }}</a>
+              </td>
+              <td style="color:var(--text-2)">{{ club.teams_active }}</td>
+              <td>
+                <div class="wr-inline">
+                  <span class="wr-pct">{{ "%.1f"|format(club.win_rate * 100) }}%</span>
+                  <div class="wr-bar">
+                    <div class="wr-fill" style="width:{{ "%.0f"|format(club.win_rate * 100) }}%"></div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--muted)">
+                  {{ club.ranking_score|int }}
+                </span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% else %}
+  <div class="empty-state">{{ data_state.message }}</div>
+{% endif %}
+
+{% endblock %}

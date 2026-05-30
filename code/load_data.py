@@ -91,8 +91,16 @@ def main():
                  ["pool_id", "team_name", "rank_seed", "matches_won", "matches_lost", "point_diff", "pool_finish"], "pool_id, team_name")
 
         # 5. Matches (Compound Key)
-        load_csv(cursor, "data/match_results.csv", "match_results", 
+        load_csv(cursor, "data/match_results.csv", "match_results",
                  ["match_id", "pool_id", "team_name", "opponent_name", "outcome", "sets_won", "sets_lost", "score_log"], "match_id, team_name")
+
+        # 6. Bracket matches
+        load_csv(cursor, "data/bracket_matches.csv", "bracket_matches",
+                 ["match_id", "tournament_id", "division", "bracket_tier", "round_label", "team_name", "opponent_name", "outcome", "score_log"], "match_id, team_name")
+
+        # 7. Bracket placements
+        load_csv(cursor, "data/bracket_placements.csv", "bracket_placements",
+                 ["tournament_id", "division", "bracket_tier", "team_name", "placement"], "tournament_id, division, bracket_tier, team_name")
 
         conn.commit()
         logger.info("Successfully loaded all data into Postgres.")
@@ -101,6 +109,7 @@ def main():
         logger.error(f"Error loading data: {e}")
         if conn:
             conn.rollback()
+        raise
     finally:
         if cursor: cursor.close()
         if conn: conn.close()

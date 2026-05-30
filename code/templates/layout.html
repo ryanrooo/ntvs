@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}NTVS Volleyball{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ request.url_for('static', path='/css/club_analytics.css') }}?v={{ asset_v }}" />
+  </head>
+  <body>
+    {% set path = request.url.path %}
+    <header class="site-header">
+      <a class="site-logo" href="/"><span class="site-mark">N</span><span class="site-wordmark">NTVS</span></a>
+      <span class="site-tagline">North Texas Volleyball Stats</span>
+      <nav class="site-links">
+        <a class="site-link {% if path == '/' %}active{% endif %}" href="/">Home</a>
+        <a class="site-link {% if path.startswith('/clubs') %}active{% endif %}" href="/clubs">Clubs</a>
+        <a class="site-link {% if path.startswith('/compare') %}active{% endif %}" href="/compare">Compare</a>
+        <a class="site-link" href="#" title="Coming soon">Schedule</a>
+        <a class="site-link {% if path.startswith('/pool-results') %}active{% endif %}" href="/pool-results">Results</a>
+        <a class="site-link {% if path.startswith('/coaches') %}active{% endif %}" href="/coaches">Coaches</a>
+      </nav>
+      <form class="site-search" action="/coaches" method="get">
+        <span class="ic">⌕</span>
+        <input type="text" name="q" placeholder="Search clubs, coaches, tournaments…" aria-label="Search" />
+        <span class="kbd">⌘K</span>
+      </form>
+      <div class="site-actions">
+        <a class="btn" href="#" title="Director dashboard — coming soon">Director</a>
+        <a class="btn btn-primary" href="#" title="Claim your profile — coming soon">Claim profile</a>
+      </div>
+    </header>
+    <main>{% block content %}{% endblock %}</main>
+    <script src="{{ request.url_for('static', path='/js/tabs.js') }}?v={{ asset_v }}" defer></script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>
