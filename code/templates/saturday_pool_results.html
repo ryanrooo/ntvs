@@ -1,0 +1,123 @@
+{% extends "layout.html" %}
+{% block title %}Pool Results — NTVS{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <span class="eyebrow">Saturday Club Play</span>
+  <h1>Pool Results</h1>
+  <p>Filter by tournament, age group, division, or club to inspect pool standings and match summaries.</p>
+</div>
+
+<section class="filters-bar">
+  <form action="/pool-results" method="get" class="filter-grid">
+    <label>Tournament ID
+      <input type="text" name="tournament_id" value="{{ filters.tournament_id }}" placeholder="e.g. 2024-spring" />
+    </label>
+    <label>Age Group
+      <input type="text" name="age_group" value="{{ filters.age_group }}" placeholder="e.g. 14" />
+    </label>
+    <label>Division
+      <input type="text" name="division" value="{{ filters.division }}" placeholder="e.g. 14A" />
+    </label>
+    <label>Club
+      <input type="text" name="club_name" value="{{ filters.club_name }}" placeholder="Club name…" />
+    </label>
+    <button type="submit">Refine</button>
+  </form>
+</section>
+
+{% if pools %}
+  {% for pool in pools %}
+    <div class="pool-card">
+      <div class="pool-card-head">
+        <div>
+          <div class="pool-label">{{ pool.tournament_id }}</div>
+          <h2 style="margin-top:4px">{{ pool.pool_name }}</h2>
+        </div>
+        <span class="div-badge">{{ pool.division }}</span>
+      </div>
+
+      {# Standings #}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:52px">Seed</th>
+              <th>Team</th>
+              <th>W – L</th>
+              <th>Sets</th>
+              <th>Pts ±</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in pool.standings %}
+              <tr>
+                <td>
+                  <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.82rem;color:var(--muted)">
+                    {{ row.rank or "—" }}
+                  </span>
+                </td>
+                <td>
+                  {% if row.club_key %}
+                    <a href="/clubs/{{ row.club_key }}" class="club-link">{{ row.team_name }}</a>
+                  {% else %}
+                    <span style="font-weight:600;color:var(--text)">{{ row.team_name }}</span>
+                  {% endif %}
+                </td>
+                <td style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text-2)">{{ row.matches_record }}</td>
+                <td style="color:var(--muted);font-size:0.82rem">{{ row.sets_record }}</td>
+                <td style="font-family:monospace;font-size:0.82rem">
+                  {% if row.point_diff > 0 %}
+                    <span style="color:var(--win)">+{{ row.point_diff }}</span>
+                  {% elif row.point_diff < 0 %}
+                    <span style="color:var(--loss)">{{ row.point_diff }}</span>
+                  {% else %}
+                    <span style="color:var(--muted)">0</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if row.status_label == 'Clinched 1st' %}
+                    <span class="champ-badge" style="font-size:0.66rem;padding:2px 8px">1st</span>
+                  {% elif row.status_label == 'Advanced' %}
+                    <span class="badge badge-win">Adv</span>
+                  {% elif row.status_label == 'In progress' %}
+                    <span style="color:var(--muted);font-size:0.77rem">Live</span>
+                  {% else %}
+                    <span style="color:var(--muted);font-size:0.77rem">{{ row.status_label }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {# Match cards #}
+      {% if pool.matchups %}
+        <div style="padding:0 20px 20px">
+          <div class="sub-head" style="margin-top:20px">Match Summaries</div>
+          <div class="matchup-grid">
+            {% for m in pool.matchups %}
+              <article class="matchup-card">
+                <strong>{{ m.team_name }}</strong>
+                <span>vs {{ m.opponent_name }}</span>
+                <span style="margin-top:6px">
+                  {% if m.outcome == 'Won' %}<span class="badge badge-win">Won</span>
+                  {% elif m.outcome == 'Lost' %}<span class="badge badge-loss">Lost</span>
+                  {% else %}<span style="color:var(--muted)">—</span>{% endif %}
+                </span>
+                <small>{{ m.score_log or "No score recorded" }}</small>
+              </article>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty-state">{{ data_state.message }}</div>
+{% endif %}
+
+{% endblock %}

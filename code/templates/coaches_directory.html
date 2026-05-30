@@ -1,0 +1,57 @@
+{% extends "layout.html" %}
+{% block title %}Coaches — NTVS{% endblock %}
+{% block content %}
+
+<div class="dir-head">
+  <div class="dir-title">
+    <span class="kicker">Directory · {{ coaches|length }} coaches</span>
+    <h1>Coaches</h1>
+  </div>
+  <a class="btn btn-primary" href="#" title="Claim your profile — coming soon">Claim your profile</a>
+</div>
+
+<form action="/coaches" method="get" class="coach-toolbar">
+  <label class="coach-search">
+    <span class="ic">⌕</span>
+    <input type="text" name="q" value="{{ query.q }}" placeholder="Search coaches or clubs…" />
+  </label>
+  <label class="toggle-pill">
+    <input type="checkbox" name="verified_only" value="true" {% if query.verified_only %}checked{% endif %} onchange="this.form.submit()" />
+    ✓ Verified only
+  </label>
+  <button type="submit" class="btn">Search</button>
+</form>
+
+{% if coaches %}
+  <div class="coach-grid">
+    {% for c in coaches %}
+      {% set filled = c.rating | round(0, 'common') | int %}
+      <article class="coach-card">
+        <div class="coach-card-top">
+          <span class="avatar" style="background:{{ c.gradient }}">{{ c.initials }}</span>
+          <div class="coach-id">
+            <a class="coach-name" href="/coaches/{{ c.coach_key }}">{{ c.display_name }}{% if c.verified %}<span class="verified-dot">✔</span>{% endif %}</a>
+            <span class="coach-role">{{ c.role }}</span>
+            <span class="club-dot">
+              <span class="swatch" style="background:{{ c.club_color }}"></span>
+              {% if c.club_key %}<a href="/clubs/{{ c.club_key }}">{{ c.club_label }}</a>{% else %}{{ c.club_label }}{% endif %}
+            </span>
+          </div>
+        </div>
+        <div class="coach-stats">
+          <div class="stat"><span class="stat-num">{{ c.wins }}</span><span class="stat-lbl">Wins</span></div>
+          <div class="stat"><span class="stat-num">{{ "%.0f"|format(c.win_rate * 100) }}%</span><span class="stat-lbl">Win</span></div>
+          <div class="stat"><span class="stat-num">{{ c.commits }}</span><span class="stat-lbl">Commits</span></div>
+          <div class="coach-rating">
+            <div class="rating-stars">{{ '★' * filled }}{{ '☆' * (5 - filled) }}</div>
+            <div class="rating-meta">{{ "%.1f"|format(c.rating) }} · {{ c.endorse_count }}</div>
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">{{ data_state.message }}</div>
+{% endif %}
+
+{% endblock %}

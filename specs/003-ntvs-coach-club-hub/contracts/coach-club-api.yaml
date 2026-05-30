@@ -1,0 +1,379 @@
+openapi: 3.1.0
+info:
+  title: NTVS Coach & Club Hub API
+  version: 0.1.0
+  description: >
+    Additive endpoints for the NTVS-2 handoff: coaches directory/profile, positive-only endorsements,
+    coaching résumé positions, club-director verification, multi-club comparison, tournament schedule,
+    and tournament results. Reads return a `data_state` block consistent with the existing analytics
+    API. Writes require no per-user auth, but in production they are abuse-gated (per-client rate
+    limit + honeypot on endorsement/position submissions; shared director token on verification
+    resolve) — configurable OFF for local/demo per FR-035 — and are idempotent. The legacy
+    `/api/clubs/compare` contract is extended backward-compatibly.
+servers:
+  - url: http://localhost:8000
+
+paths:
+  /api/coaches:
+    get:
+      summary: List/search coaches
+      parameters:
+        - { in: query, name: q, schema: { type: string }, required: false, description: coach or club name substring }
+        - { in: query, name: verified_only, schema: { type: boolean, default: false }, required: false }
+      responses:
+        '200':
+          description: Coach directory
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  coaches: { type: array, items: { $ref: '#/components/schemas/CoachCard' } }
+                  data_state: { $ref: '#/components/schemas/DataState' }
+
+  /api/coaches/{coach_key}:
+    get:
+      summary: Coach profile (résumé + endorsement summary)
+      parameters:
+        - { in: path, name: coach_key, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Coach profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoachProfile' }
+        '404': { description: Coach not found }
+
+  /api/coaches/{coach_key}/endorsements:
+    post:
+      summary: Submit a positive-only endorsement (idempotent)
+      parameters:
+        - { in: path, name: coach_key, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EndorsementInput' }
+      responses:
+        '201': { description: Endorsement accepted (or existing returned on dedupe), content: { application/json: { schema: { $ref: '#/components/schemas/Endorsement' } } } }
+        '422':
+          description: Rejected by positive-only policy (rating < 4 or negative tone) or length > 500
+          content: { application/json: { schema: { $ref: '#/components/schemas/PolicyError' } } }
+        '429':
+          description: Throttled or honeypot-tripped by production write gating; nothing persisted
+          content: { application/json: { schema: { $ref: '#/components/schemas/GatingError' } } }
+
+  /api/coaches/{coach_key}/positions:
+    post:
+      summary: Add a coaching position (pending; idempotent on club+role+years)
+      parameters:
+        - { in: path, name: coach_key, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PositionInput' }
+      responses:
+        '201': { description: Position added or existing returned, content: { application/json: { schema: { $ref: '#/components/schemas/Position' } } } }
+        '422': { description: Missing required club or role }
+        '429':
+          description: Throttled or honeypot-tripped by production write gating; nothing persisted
+          content: { application/json: { schema: { $ref: '#/components/schemas/GatingError' } } }
+
+  /api/coaches/{coach_key}/positions/{position_id}:
+    delete:
+      summary: Remove a position (only while not verified)
+      parameters:
+        - { in: path, name: coach_key, required: true, schema: { type: string } }
+        - { in: path, name: position_id, required: true, schema: { type: integer } }
+      responses:
+        '204': { description: Removed (or already absent — idempotent) }
+        '409': { description: Position is verified and cannot be removed }
+
+  /api/coaches/{coach_key}/verification-requests:
+    post:
+      summary: Submit a verification request for a claimed position
+      description: >
+        match_strength/match_pct are assigned server-side as a seeded/heuristic affiliation signal
+        (not derived from canonical match data).
+      parameters:
+        - { in: path, name: coach_key, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [club_key]
+              properties:
+                club_key: { type: string }
+                position_id: { type: integer, nullable: true }
+                note: { type: string }
+      responses:
+        '201': { description: Request created (or existing pending returned), content: { application/json: { schema: { $ref: '#/components/schemas/VerificationRequest' } } } }
+
+  /api/director/requests:
+    get:
+      summary: Pending verification requests for a club's director queue
+      parameters:
+        - { in: query, name: club_key, schema: { type: string }, required: false, description: defaults to the demo director's club }
+      responses:
+        '200':
+          description: Director dashboard data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requests: { type: array, items: { $ref: '#/components/schemas/VerificationRequest' } }
+                  stats: { $ref: '#/components/schemas/DirectorStats' }
+                  data_state: { $ref: '#/components/schemas/DataState' }
+
+  /api/director/requests/{request_id}/resolve:
+    post:
+      summary: Approve or deny a verification request (idempotent — no-op if already resolved)
+      parameters:
+        - { in: path, name: request_id, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [approve, deny] }
+      responses:
+        '200':
+          description: Resolution outcome
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request_id: { type: integer }
+                  status: { type: string, enum: [approved, denied, pending] }
+                  applied: { type: boolean, description: false when the request was already resolved/missing }
+        '403':
+          description: Missing or invalid director token under production gating; no change applied
+          content: { application/json: { schema: { $ref: '#/components/schemas/GatingError' } } }
+
+  /api/clubs/compare:
+    get:
+      summary: Compare 2–4 clubs (backward compatible)
+      description: >
+        Accepts either the legacy pair (`club_a` + `club_b`) or a repeatable `clubs` param (2–4
+        `club_key`s). When `clubs` is present it takes precedence.
+      parameters:
+        - { in: query, name: club_a, schema: { type: string }, required: false }
+        - { in: query, name: club_b, schema: { type: string }, required: false }
+        - { in: query, name: clubs, required: false, schema: { type: array, items: { type: string }, maxItems: 4, minItems: 2 }, style: form, explode: true }
+      responses:
+        '200':
+          description: Multi-club comparison
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Comparison' }
+        '422': { description: Fewer than 2 or more than 4 clubs }
+
+  /api/schedule:
+    get:
+      summary: Tournament schedule with filters
+      parameters:
+        - { in: query, name: open_only, schema: { type: boolean, default: false } }
+        - { in: query, name: month, schema: { type: string }, description: "month_key e.g. 2026-03" }
+        - { in: query, name: within_mi, schema: { type: integer }, description: proximity cap }
+      responses:
+        '200':
+          description: Filtered schedule (drives list/calendar/map)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tournaments: { type: array, items: { $ref: '#/components/schemas/ScheduledTournament' } }
+                  counts: { type: object, properties: { tournaments: { type: integer }, teams: { type: integer } } }
+                  data_state: { $ref: '#/components/schemas/DataState' }
+
+  /api/results/{tournament_id}:
+    get:
+      summary: Tournament results (podium, bracket, standings, scores, leaders)
+      parameters:
+        - { in: path, name: tournament_id, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Results bundle
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Results' }
+        '404': { description: Tournament not found }
+
+components:
+  schemas:
+    DataState:
+      type: object
+      properties:
+        completeness: { type: string, enum: [complete, partial, empty] }
+        message: { type: string }
+    CoachCard:
+      type: object
+      properties:
+        coach_key: { type: string }
+        display_name: { type: string }
+        role: { type: string }
+        club_key: { type: string, nullable: true }
+        club_label: { type: string }
+        club_color: { type: string }
+        verified: { type: boolean }
+        initials: { type: string }
+        gradient: { type: string }
+        wins: { type: integer }
+        win_rate: { type: number }
+        commits: { type: integer }
+        rating: { type: number, description: derived avg of endorsements }
+        endorse_count: { type: integer }
+    CoachProfile:
+      type: object
+      properties:
+        coach: { $ref: '#/components/schemas/CoachCard' }
+        city: { type: string }
+        about: { type: string }
+        verified: { type: boolean }
+        totals: { type: object, properties: { wins: {type: integer}, win_rate: {type: number}, commits: {type: integer}, gold: {type: integer}, seasons: {type: integer} } }
+        certifications: { type: array, items: { type: string } }
+        specialties: { type: array, items: { type: string } }
+        career: { type: array, items: { $ref: '#/components/schemas/Position' } }
+        teams: { type: array, items: { type: object }, description: teams coached — derived from coach_positions age_group/team labels (coaches are not linked to canonical team match records) }
+        endorsement_summary: { type: object, properties: { avg_rating: {type: number}, count: {type: integer}, most_mentioned: {type: array, items: {type: object}} } }
+        endorsements: { type: array, items: { $ref: '#/components/schemas/Endorsement' } }
+        data_state: { $ref: '#/components/schemas/DataState' }
+    Position:
+      type: object
+      properties:
+        position_id: { type: integer }
+        club_key: { type: string, nullable: true }
+        club_label: { type: string }
+        club_color: { type: string }
+        role: { type: string }
+        age_group: { type: string }
+        years: { type: string }
+        record: { type: string }
+        note: { type: string }
+        status: { type: string, enum: [pending, verified, denied] }
+    PositionInput:
+      type: object
+      required: [club_label, role]
+      properties:
+        club_label: { type: string }
+        club_key: { type: string, nullable: true }
+        role: { type: string }
+        age_group: { type: string }
+        years: { type: string }
+    Endorsement:
+      type: object
+      properties:
+        endorsement_id: { type: integer }
+        author_label: { type: string }
+        relationship: { type: string, enum: [Parent, Player, Fellow coach, Club staff] }
+        stars: { type: integer, enum: [4, 5] }
+        tags: { type: array, items: { type: string } }
+        body: { type: string, maxLength: 500 }
+        created_at: { type: string, format: date-time }
+    EndorsementInput:
+      type: object
+      required: [author_label, relationship, stars, body]
+      properties:
+        author_label: { type: string }
+        relationship: { type: string, enum: [Parent, Player, Fellow coach, Club staff] }
+        stars: { type: integer, enum: [4, 5], description: rating floor — 1–3 rejected }
+        tags: { type: array, items: { type: string } }
+        body: { type: string, maxLength: 500, description: rejected if it matches the negative-tone pattern }
+    PolicyError:
+      type: object
+      properties:
+        error: { type: string, enum: [rating_too_low, negative_tone, too_long] }
+        message: { type: string }
+    GatingError:
+      type: object
+      description: Returned when production write gating throttles or rejects a write; no data is persisted (FR-035).
+      properties:
+        error: { type: string, enum: [rate_limited, honeypot, missing_director_token] }
+        message: { type: string }
+    VerificationRequest:
+      type: object
+      properties:
+        request_id: { type: integer }
+        coach_key: { type: string }
+        club_key: { type: string }
+        position_id: { type: integer, nullable: true }
+        name: { type: string }
+        initials: { type: string }
+        color: { type: string }
+        role: { type: string }
+        claim_years: { type: string }
+        match_strength: { type: string, enum: [Strong, Partial], description: heuristic affiliation signal — seeded/snapshot not derived from canonical match data }
+        match_pct: { type: integer, description: heuristic 0–100 match percentage not computed from match records }
+        note: { type: string }
+        status: { type: string, enum: [pending, approved, denied] }
+    DirectorStats:
+      type: object
+      properties:
+        coaches: { type: integer }
+        verified: { type: integer }
+        pending: { type: integer }
+        match_rate: { type: integer }
+    Comparison:
+      type: object
+      properties:
+        clubs: { type: array, maxItems: 4, items: { $ref: '#/components/schemas/CompareClub' } }
+        metrics:
+          type: array
+          items:
+            type: object
+            properties:
+              label: { type: string }
+              dir: { type: integer, enum: [1, -1], description: -1 = lower is better (fee) }
+              values: { type: object, additionalProperties: true, description: club_key → value }
+              best_club_key: { type: string, nullable: true, description: null when all tie or not highlighted }
+        radar:
+          type: object
+          properties:
+            axes: { type: array, items: { type: string } }
+            series: { type: array, items: { type: object, properties: { club_key: {type: string}, color: {type: string}, values: { type: array, items: { type: number } } } } }
+        data_state: { $ref: '#/components/schemas/DataState' }
+    CompareClub:
+      type: object
+      properties:
+        club_key: { type: string }
+        display_name: { type: string }
+        color: { type: string }
+        tier: { type: integer, nullable: true }
+        city: { type: string }
+        rank: { type: integer }
+        win_rate: { type: number }
+    ScheduledTournament:
+      type: object
+      properties:
+        tournament_id: { type: string }
+        name: { type: string }
+        event_date: { type: string, format: date }
+        month_key: { type: string }
+        venue: { type: string }
+        city: { type: string }
+        team_count: { type: integer }
+        age_lo: { type: integer }
+        age_hi: { type: integer }
+        division: { type: string }
+        status: { type: string, enum: [Open, Filling, Waitlist] }
+        featured: { type: boolean }
+        completed: { type: boolean }
+    Results:
+      type: object
+      properties:
+        tournament: { type: object, properties: { tournament_id: {type: string}, name: {type: string} } }
+        podium: { type: array, maxItems: 3, items: { type: object, properties: { placement: {type: integer}, team_name: {type: string}, city: {type: string} } } }
+        bracket: { type: array, items: { type: object, description: rounds of matches with winner flag } }
+        standings: { type: array, items: { type: object } }
+        scores: { type: array, items: { type: object } }
+        leaders: { type: object, properties: { kills: {type: array}, assists: {type: array}, digs: {type: array} } }
+        data_state: { $ref: '#/components/schemas/DataState' }

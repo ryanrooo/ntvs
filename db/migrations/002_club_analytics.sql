@@ -1,58 +1,6 @@
 CREATE SCHEMA IF NOT EXISTS ntvs;
 SET search_path TO ntvs;
 
--- 1. Tournaments Table
-CREATE TABLE IF NOT EXISTS tournaments (
-    tournament_id VARCHAR(50) PRIMARY KEY,
-    name VARCHAR(100) NOT NULL
-);
-
--- 2. Teams Table
-CREATE TABLE IF NOT EXISTS teams (
-    team_name VARCHAR(100) PRIMARY KEY,
-    club_name VARCHAR(100),
-    division VARCHAR(50)
-);
-
--- 3. Pools Table
-CREATE TABLE IF NOT EXISTS pools (
-    pool_id VARCHAR(100) PRIMARY KEY,
-    tournament_id VARCHAR(50),
-    division VARCHAR(50),
-    pool_name VARCHAR(50),
-    team_count INT,
-    FOREIGN KEY (tournament_id) REFERENCES tournaments(tournament_id)
-);
-
--- 4. Pool Standings Table (Link between Pools and Teams)
-CREATE TABLE IF NOT EXISTS pool_standings (
-    pool_id VARCHAR(100),
-    team_name VARCHAR(100),
-    rank_seed INT,
-    matches_won INT,
-    matches_lost INT,
-    point_diff INT,
-    pool_finish INT,
-    PRIMARY KEY (pool_id, team_name),
-    FOREIGN KEY (pool_id) REFERENCES pools(pool_id),
-    FOREIGN KEY (team_name) REFERENCES teams(team_name)
-);
-
--- 5. Match Results Table
-CREATE TABLE IF NOT EXISTS match_results (
-    match_id VARCHAR(50),
-    pool_id VARCHAR(100),
-    team_name VARCHAR(100),
-    opponent_name VARCHAR(100),
-    outcome VARCHAR(20),
-    sets_won INT,
-    sets_lost INT,
-    score_log TEXT,
-    PRIMARY KEY (match_id, team_name),
-    FOREIGN KEY (pool_id) REFERENCES pools(pool_id),
-    FOREIGN KEY (team_name) REFERENCES teams(team_name)
-);
-
 CREATE TABLE IF NOT EXISTS club_aliases (
     source_club_name VARCHAR(100) PRIMARY KEY,
     base_slug VARCHAR(120) NOT NULL,
@@ -61,6 +9,32 @@ CREATE TABLE IF NOT EXISTS club_aliases (
     normalization_status VARCHAR(32) NOT NULL DEFAULT 'direct',
     collision_rank INTEGER NOT NULL DEFAULT 1
 );
+
+ALTER TABLE club_aliases
+    ADD COLUMN IF NOT EXISTS base_slug VARCHAR(120);
+
+ALTER TABLE club_aliases
+    ALTER COLUMN base_slug SET DEFAULT 'unknown-club';
+
+UPDATE club_aliases
+SET base_slug = COALESCE(NULLIF(base_slug, ''), REGEXP_REPLACE(LOWER(source_club_name), '[^a-z0-9]+', '-', 'g'), 'unknown-club')
+WHERE base_slug IS NULL OR base_slug = '';
+
+ALTER TABLE club_aliases
+    ALTER COLUMN base_slug SET NOT NULL;
+
+ALTER TABLE club_aliases
+    ADD COLUMN IF NOT EXISTS collision_rank INTEGER;
+
+UPDATE club_aliases
+SET collision_rank = 1
+WHERE collision_rank IS NULL OR collision_rank < 1;
+
+ALTER TABLE club_aliases
+    ALTER COLUMN collision_rank SET DEFAULT 1;
+
+ALTER TABLE club_aliases
+    ALTER COLUMN collision_rank SET NOT NULL;
 
 WITH normalized AS (
     SELECT DISTINCT
@@ -100,6 +74,10 @@ SET
     display_name = EXCLUDED.display_name,
     normalization_status = EXCLUDED.normalization_status,
     collision_rank = EXCLUDED.collision_rank;
+
+DROP VIEW IF EXISTS club_head_to_head_summary;
+DROP VIEW IF EXISTS club_season_summary;
+DROP VIEW IF EXISTS club_team_map;
 
 CREATE OR REPLACE VIEW club_team_map AS
 SELECT
@@ -155,3 +133,12 @@ JOIN club_team_map c2 ON c2.team_name = mr.opponent_name
 LEFT JOIN pools p ON p.pool_id = mr.pool_id
 WHERE c1.club_key <> c2.club_key
 GROUP BY c1.club_key, c2.club_key;
+
+-- Rollback guidance:
+-- 1. DROP VIEW IF EXISTS club_head_to_head_summary;
+-- 2. DROP VIEW IF EXISTS club_season_summary;
+-- 3. DROP VIEW IF EXISTS club_team_map;
+-- 4. DROP TABLE IF EXISTS club_aliases;
+-- Refresh guidance after data reload:
+-- Re-run this migration so club aliases and derived views reflect the latest canonical rows.
+-- Collision-safe club_key assignment is deterministic by source_club_name sort order within each base_slug.

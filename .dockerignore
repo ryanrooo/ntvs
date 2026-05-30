@@ -1,0 +1,17 @@
+.git/
+.gitignore
+.dockerignore
+node_modules/
+dist/
+build/
+coverage/
+*.log
+*.log.*
+.env
+.env*
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+stitch_ntvs/
