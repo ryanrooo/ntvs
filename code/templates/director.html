@@ -1,0 +1,91 @@
+{% extends "layout.html" %}
+{% block title %}Director — Coaching staff & verification — NTVS{% endblock %}
+{% block content %}
+
+<div class="dir-dash-head">
+  <div class="dir-dash-id">
+    <span class="dir-badge">{{ (club_key or 'NA')[:2] | upper }}</span>
+    <div>
+      <span class="kicker">Club Director · {{ (club_key or 'your club').replace('-', ' ').title() }}</span>
+      <h1 class="editor-title">Coaching staff &amp; verification</h1>
+    </div>
+  </div>
+  <div class="editor-actions">
+    <a class="btn" href="#" title="Coming soon">Manage teams</a>
+    <a class="btn btn-primary" href="#" title="Coming soon">+ Invite coach</a>
+  </div>
+</div>
+
+<div class="dir-layout" data-club="{{ club_key or '' }}">
+  <div class="dir-main">
+    <div class="dir-pending-head">
+      <h2 class="section-title">Pending requests</h2>
+      <span class="chip chip-amber" id="pending-badge">{{ stats.pending }} awaiting review</span>
+    </div>
+
+    <div id="request-list">
+      {% for r in requests %}
+        <div class="req-card" data-req="{{ r.request_id }}">
+          <div class="req-top">
+            <span class="avatar" style="background:{{ r.color }}">{{ r.initials }}</span>
+            <div class="req-id">
+              <div class="req-name">{{ r.name }}</div>
+              <div class="req-role">{{ r.role }}{% if r.claim_years %} · {{ r.claim_years }}{% endif %}</div>
+            </div>
+            <span class="req-when">{{ r.when }}</span>
+          </div>
+          <div class="req-match">
+            <span class="chip {% if r.match_strength == 'Strong' %}chip-win{% else %}chip-amber{% endif %}">{% if r.match_strength == 'Strong' %}✓{% else %}◑{% endif %} {{ r.match_strength }} match</span>
+            <div class="match-bar"><div class="match-fill {% if r.match_strength == 'Strong' %}is-strong{% endif %}" style="width:{{ r.match_pct }}%"></div></div>
+            <span class="match-pct mono">{{ r.match_pct }}%</span>
+          </div>
+          {% if r.note %}<div class="req-note">{{ r.note }}</div>{% endif %}
+          <div class="req-actions">
+            <button type="button" class="btn btn-primary req-approve" data-req="{{ r.request_id }}">✓ Verify &amp; link</button>
+            {% if r.coach_key %}<a class="btn" href="/coaches/{{ r.coach_key }}">View records</a>{% endif %}
+            <button type="button" class="btn-deny req-deny" data-req="{{ r.request_id }}">Deny</button>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    <div class="empty-state" id="dir-empty"{% if requests %} style="display:none"{% endif %}>All caught up — no pending requests.</div>
+  </div>
+
+  <aside class="dir-side">
+    <div class="stat-grid">
+      <div class="stat-box"><span class="stat-num" id="st-coaches">{{ stats.coaches }}</span><span class="stat-lbl">Coaches</span></div>
+      <div class="stat-box"><span class="stat-num" id="st-verified">{{ stats.verified }}</span><span class="stat-lbl">Verified</span></div>
+      <div class="stat-box"><span class="stat-num" id="st-pending">{{ stats.pending }}</span><span class="stat-lbl">Pending</span></div>
+      <div class="stat-box"><span class="stat-num">{{ stats.match_rate }}%</span><span class="stat-lbl">Match rate</span></div>
+    </div>
+
+    <div class="card staff-card">
+      <h3 class="staff-title">Current staff</h3>
+      {% if staff %}
+        {% for s in staff %}
+          <div class="staff-row">
+            <span class="avatar" style="background:{{ s.gradient }}">{{ s.initials }}</span>
+            <div class="staff-id">
+              <a href="/coaches/{{ s.coach_key }}" class="staff-name">{{ s.display_name }}</a>
+              <span class="staff-role">{{ s.role }}</span>
+            </div>
+            {% if s.verified %}<span class="staff-verified">✔ Verified</span>{% else %}<span class="staff-pending">Pending</span>{% endif %}
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">No staff linked yet.</div>
+      {% endif %}
+    </div>
+
+    <div class="card info-card">
+      <h3 class="info-title">How verification works</h3>
+      <p>NTVS cross-checks a coach's claimed teams against logged match records. You give the final ✓ — verified coaches appear on your club page and in recruiter search.</p>
+    </div>
+  </aside>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ request.url_for('static', path='/js/director.js') }}?v={{ asset_v }}" defer></script>
+{% endblock %}

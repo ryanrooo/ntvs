@@ -139,3 +139,116 @@ def test_post_endorsement_requires_relationship():
                     json={"stars": 5, "body": "Great coach."})
     assert r.status_code == 422
     assert r.json()["error"] == "invalid"
+
+
+# ── US3: positions + verification requests ─────────────────────────────────
+
+def test_post_position_requires_club_and_role():
+    client = TestClient(api.create_app())
+    r = client.post("/api/coaches/maria-alvarez/positions", json={"club_label": "", "role": ""})
+    assert r.status_code == 422
+    assert r.json()["error"] == "invalid"
+
+
+def test_post_position_accepts(monkeypatch):
+    monkeypatch.setattr(
+        api.coach_commands, "add_position",
+        lambda *a, **k: {"position": {"position_id": 9, "club_label": "Drive Nation", "role": "Head Coach",
+                                       "age_group": "17 Open", "years": "2021–2025", "status": "pending",
+                                       "club_key": "drive-nation", "club_color": "#f5c518", "record": "", "note": ""},
+                         "applied": True},
+    )
+    client = TestClient(api.create_app())
+    r = client.post("/api/coaches/maria-alvarez/positions",
+                    json={"club_label": "Drive Nation", "role": "Head Coach", "age_group": "17 Open", "years": "2021–2025"})
+    assert r.status_code == 201
+    assert r.json()["status"] == "pending"
+
+
+def test_delete_position_returns_204(monkeypatch):
+    monkeypatch.setattr(api.coach_commands, "delete_position", lambda *a, **k: {"removed": True, "reason": "deleted"})
+    client = TestClient(api.create_app())
+    r = client.delete("/api/coaches/maria-alvarez/positions/9")
+    assert r.status_code == 204
+
+
+def test_delete_verified_position_returns_409(monkeypatch):
+    monkeypatch.setattr(api.coach_commands, "delete_position", lambda *a, **k: {"removed": False, "reason": "verified"})
+    client = TestClient(api.create_app())
+    r = client.delete("/api/coaches/maria-alvarez/positions/1")
+    assert r.status_code == 409
+    assert r.json()["error"] == "verified"
+
+
+def test_post_verification_request_requires_club():
+    client = TestClient(api.create_app())
+    r = client.post("/api/coaches/maria-alvarez/verification-requests", json={"note": "please verify"})
+    assert r.status_code == 422
+    assert r.json()["error"] == "invalid"
+
+
+def test_post_verification_request_accepts(monkeypatch):
+    monkeypatch.setattr(api.coach_commands, "create_verification_request",
+                        lambda *a, **k: {"request_id": 7, "status": "pending", "applied": True})
+    client = TestClient(api.create_app())
+    r = client.post("/api/coaches/maria-alvarez/verification-requests",
+                    json={"club_key": "drive-nation", "position_id": 1})
+    assert r.status_code == 201
+    assert r.json()["status"] == "pending"
+
+
+# ── US4: director queue + resolve ──────────────────────────────────────────
+
+DIRECTOR_DATA = {
+    "club_key": "skyline-juniors",
+    "requests": [{
+        "request_id": 1, "coach_key": "priya-nair", "club_key": "skyline-juniors", "position_id": 7,
+        "name": "Priya Nair", "initials": "PN", "color": "#4ade80", "role": "Head Coach · 15 National",
+        "claim_years": "2022–2025", "match_strength": "Partial", "match_pct": 62, "note": "Please confirm.", "when": "2h ago",
+    }],
+    "stats": {"coaches": 1, "verified": 0, "pending": 1, "match_rate": 62},
+    "staff": [{"coach_key": "priya-nair", "display_name": "Priya Nair", "initials": "PN",
+               "gradient": "linear-gradient(135deg,#4ade80,#22d3ee)", "role": "Head Coach — 15 National", "verified": False}],
+    "data_state": {"completeness": "complete", "message": "Director queue loaded."},
+}
+
+
+def test_director_requests_returns_queue(monkeypatch):
+    monkeypatch.setattr(api, "fetch_with_connection", lambda func, *a, **k: DIRECTOR_DATA)
+    client = TestClient(api.create_app())
+    r = client.get("/api/director/requests?club_key=skyline-juniors")
+    assert r.status_code == 200
+    assert r.json()["stats"]["pending"] == 1
+    assert r.json()["requests"][0]["match_strength"] == "Partial"
+
+
+def test_resolve_approve_applies(monkeypatch):
+    monkeypatch.setattr(api.coach_commands, "resolve_request",
+                        lambda rid, dec, token=None: {"request_id": rid, "status": "approved", "applied": True})
+    client = TestClient(api.create_app())
+    r = client.post("/api/director/requests/1/resolve", json={"decision": "approve"})
+    assert r.status_code == 200
+    assert r.json()["status"] == "approved" and r.json()["applied"] is True
+
+
+def test_resolve_repeat_is_idempotent(monkeypatch):
+    monkeypatch.setattr(api.coach_commands, "resolve_request",
+                        lambda rid, dec, token=None: {"request_id": rid, "status": "approved", "applied": False})
+    client = TestClient(api.create_app())
+    r = client.post("/api/director/requests/1/resolve", json={"decision": "approve"})
+    assert r.status_code == 200 and r.json()["applied"] is False
+
+
+def test_resolve_rejects_invalid_decision():
+    client = TestClient(api.create_app())
+    r = client.post("/api/director/requests/1/resolve", json={"decision": "maybe"})
+    assert r.status_code == 422 and r.json()["error"] == "invalid"
+
+
+def test_director_page_renders(monkeypatch):
+    monkeypatch.setattr(api, "fetch_with_connection", lambda func, *a, **k: DIRECTOR_DATA)
+    client = TestClient(api.create_app())
+    r = client.get("/director")
+    assert r.status_code == 200
+    assert "Pending requests" in r.text
+    assert "Priya Nair" in r.text

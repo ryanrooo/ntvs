@@ -5,7 +5,7 @@ from typing import Generator
 
 import uvicorn
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -19,8 +19,8 @@ from services.analytics_queries import (
     get_pool_results,
     get_tournaments,
 )
-from services.coach_queries import get_coach_directory, get_coach_profile
-from services.view_models import serialize_data_state
+from services.coach_queries import get_coach_directory, get_coach_profile, get_director_queue
+from services.view_models import compute_profile_strength, serialize_data_state
 
 load_dotenv()
 
@@ -217,6 +217,76 @@ def create_app() -> FastAPI:
         logger.info("api_add_endorsement coach=%s applied=%s", coach_key, result["applied"])
         return JSONResponse(status_code=201, content=result["endorsement"])
 
+    @app.post("/api/coaches/{coach_key}/positions")
+    async def api_add_position(coach_key: str, request: Request):
+        data = await request.json()
+        client_ip = request.client.host if request.client else None
+        if rate_limit.is_honeypot_tripped(data.get("website")):
+            return JSONResponse(status_code=429, content={"error": "honeypot", "message": "Submission blocked."})
+        if not rate_limit.check_rate_limit(client_ip):
+            return JSONResponse(status_code=429, content={"error": "rate_limited", "message": "Too many submissions — please wait a bit."})
+        club_label = (data.get("club_label") or "").strip()
+        role = (data.get("role") or "").strip()
+        if not club_label or not role:
+            return JSONResponse(status_code=422, content={"error": "invalid", "message": "Club and role are required."})
+        result = coach_commands.add_position(
+            coach_key, club_label, role,
+            age_group=(data.get("age_group") or "").strip() or None,
+            years=(data.get("years") or "").strip() or None,
+        )
+        if result is None:
+            raise HTTPException(status_code=404, detail="Coach not found")
+        logger.info("api_add_position coach=%s applied=%s", coach_key, result["applied"])
+        return JSONResponse(status_code=201, content=result["position"])
+
+    @app.delete("/api/coaches/{coach_key}/positions/{position_id}")
+    def api_delete_position(coach_key: str, position_id: int):
+        result = coach_commands.delete_position(coach_key, position_id)
+        if not result["removed"] and result["reason"] == "verified":
+            return JSONResponse(status_code=409, content={"error": "verified", "message": "Verified positions can't be removed."})
+        logger.info("api_delete_position coach=%s position=%s reason=%s", coach_key, position_id, result["reason"])
+        return Response(status_code=204)
+
+    @app.post("/api/coaches/{coach_key}/verification-requests")
+    async def api_create_verification_request(coach_key: str, request: Request):
+        data = await request.json()
+        client_ip = request.client.host if request.client else None
+        if rate_limit.is_honeypot_tripped(data.get("website")):
+            return JSONResponse(status_code=429, content={"error": "honeypot", "message": "Submission blocked."})
+        if not rate_limit.check_rate_limit(client_ip):
+            return JSONResponse(status_code=429, content={"error": "rate_limited", "message": "Too many submissions — please wait a bit."})
+        club_key = (data.get("club_key") or "").strip()
+        if not club_key:
+            return JSONResponse(status_code=422, content={"error": "invalid", "message": "A club is required."})
+        result = coach_commands.create_verification_request(
+            coach_key, club_key,
+            position_id=data.get("position_id"),
+            note=(data.get("note") or "").strip() or None,
+        )
+        if result is None:
+            raise HTTPException(status_code=404, detail="Coach not found")
+        logger.info("api_create_verification_request coach=%s club=%s applied=%s", coach_key, club_key, result["applied"])
+        return JSONResponse(status_code=201, content=result)
+
+    @app.get("/api/director/requests")
+    def api_director_requests(club_key: str | None = None):
+        data = fetch_with_connection(get_director_queue, club_key)
+        logger.info("api_director_requests club=%s pending=%s state=%s", data["club_key"], data["stats"]["pending"], data["data_state"]["completeness"])
+        return data
+
+    @app.post("/api/director/requests/{request_id}/resolve")
+    async def api_resolve_request(request_id: int, request: Request):
+        data = await request.json()
+        decision = (data.get("decision") or "").strip()
+        if decision not in ("approve", "deny"):
+            return JSONResponse(status_code=422, content={"error": "invalid", "message": "decision must be 'approve' or 'deny'."})
+        token = request.headers.get("X-Director-Token") or data.get("director_token")
+        result = coach_commands.resolve_request(request_id, decision, token=token)
+        if result.get("error") == "unauthorized":
+            return JSONResponse(status_code=403, content={"error": "missing_director_token", "message": "A valid director token is required to resolve requests."})
+        logger.info("api_resolve_request request=%s decision=%s applied=%s", request_id, decision, result["applied"])
+        return JSONResponse(status_code=200, content={"request_id": result["request_id"], "status": result["status"], "applied": result["applied"]})
+
     @app.get("/coaches", response_class=HTMLResponse)
     def coaches_page(request: Request, q: str | None = None, verified_only: bool = False):
         data = api_coaches(q, verified_only)
@@ -227,6 +297,18 @@ def create_app() -> FastAPI:
     def coach_profile_page(request: Request, coach_key: str):
         profile = api_coach_profile(coach_key)
         return templates.TemplateResponse("coach_profile.html", {"request": request, **profile})
+
+    @app.get("/coaches/{coach_key}/edit", response_class=HTMLResponse)
+    def coach_editor_page(request: Request, coach_key: str):
+        profile = api_coach_profile(coach_key)
+        profile["profile_strength"] = compute_profile_strength(len(profile["career"]), bool(profile["about"]))
+        club_options = [c["display_name"] for c in fetch_with_connection(get_club_rankings, None, "rank", None)]
+        return templates.TemplateResponse("coach_editor.html", {"request": request, **profile, "club_options": club_options})
+
+    @app.get("/director", response_class=HTMLResponse)
+    def director_page(request: Request, club_key: str | None = None):
+        data = fetch_with_connection(get_director_queue, club_key)
+        return templates.TemplateResponse("director.html", {"request": request, **data})
 
     @app.get("/tournaments")
     def read_tournaments():

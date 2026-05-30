@@ -1,0 +1,118 @@
+{% extends "layout.html" %}
+{% block title %}Edit profile — {{ coach.display_name }} — NTVS{% endblock %}
+{% block content %}
+
+<div class="editor-head">
+  <div>
+    <span class="kicker">Editing your profile · Draft</span>
+    <h1 class="editor-title">Build your coaching résumé</h1>
+  </div>
+  <div class="editor-actions">
+    <span class="saved-note">Saved just now</span>
+    <a class="btn" href="/coaches/{{ coach.coach_key }}">Preview</a>
+    <a class="btn btn-primary" href="/coaches/{{ coach.coach_key }}">Publish profile</a>
+  </div>
+</div>
+
+<div class="stepper">
+  {% set steps = [("Basics", true), ("Link clubs", true), ("Career history", false), ("Credentials", false), ("Review", false)] %}
+  {% for label, done in steps %}
+    <div class="step {% if loop.index == 3 %}is-active{% elif done %}is-done{% endif %}">
+      <span class="step-dot">{% if done %}✓{% else %}{{ loop.index }}{% endif %}</span>
+      <span class="step-label">{{ label }}</span>
+      {% if not loop.last %}<span class="step-line {% if done %}is-done{% endif %}"></span>{% endif %}
+    </div>
+  {% endfor %}
+</div>
+
+<div class="editor-layout" data-coach="{{ coach.coach_key }}" data-club="{{ coach.club_key or '' }}" data-has-about="{{ '1' if about else '0' }}">
+  <div class="editor-form">
+    <h2 class="section-title">Career history</h2>
+    <p class="section-sub">Add the teams you've coached. Verified entries are matched against NTVS match records.</p>
+
+    <div id="position-list">
+      {% for p in career %}
+        <div class="pos-card" data-pos="{{ p.position_id }}" style="border-left-color:{{ p.club_color }}">
+          <div class="pos-info">
+            <div class="pos-club">{{ p.club_label }}
+              {% if p.status == 'verified' %}<span class="chip chip-verified">✓ Verified</span>
+              {% elif p.status == 'denied' %}<span class="chip chip-denied">Denied</span>
+              {% else %}<span class="chip chip-amber">Pending</span>{% endif %}
+            </div>
+            <div class="pos-role">{{ p.role }}{% if p.age_group %} · {{ p.age_group }}{% endif %}</div>
+            {% if p.years %}<div class="pos-years mono">{{ p.years }}</div>{% endif %}
+          </div>
+          {% if p.status != 'verified' %}<button type="button" class="pos-remove" data-pos="{{ p.position_id }}" title="Remove">✕</button>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+
+    <form id="position-form" class="pos-form" autocomplete="off">
+      <div class="label accent">+ New position</div>
+      <div class="form-grid">
+        <label>Club<input name="club_label" list="club-list" placeholder="e.g. Drive Nation" /></label>
+        <label>Role<input name="role" placeholder="Head Coach" /></label>
+        <label>Age group / team<input name="age_group" placeholder="15–17" /></label>
+        <label>Years<input name="years" class="mono" placeholder="2016 – 2019" /></label>
+      </div>
+      <datalist id="club-list">{% for c in club_options %}<option value="{{ c }}"></option>{% endfor %}</datalist>
+      <input type="text" name="website" class="hp-field" tabindex="-1" aria-hidden="true" />
+      <div class="pos-form-actions">
+        <button type="submit" class="btn btn-primary">Add position</button>
+        <span class="pos-form-msg" id="pos-msg" role="status"></span>
+      </div>
+    </form>
+
+    <div class="verify-card">
+      <span class="ic">🔗</span>
+      <div class="verify-text">
+        <strong>Request club verification</strong>
+        <small>Your club's director can confirm your role to earn the ✓ badge.</small>
+      </div>
+      <button type="button" class="btn" id="verify-btn"{% if not coach.club_key %} disabled title="Link a canonical club to request verification"{% endif %}>Send request</button>
+    </div>
+    <div class="verify-msg" id="verify-msg" role="status"></div>
+  </div>
+
+  <aside class="editor-preview">
+    <div class="preview-head"><span class="label">Live preview</span><span class="chip">How recruiters see it</span></div>
+    <div class="card preview-card">
+      <div class="preview-id">
+        <span class="avatar avatar-lg" style="background:{{ coach.gradient }}">{{ coach.initials }}</span>
+        <div>
+          <div class="preview-name">{{ coach.display_name }}{% if verified %}<span class="verified-dot">✔</span>{% endif %}</div>
+          <div class="preview-sub">{{ coach.role }}{% if coach.club_label %} · {{ coach.club_label }}{% endif %}{% if city %} · {{ city }}{% endif %}</div>
+        </div>
+      </div>
+      <div class="preview-stats">
+        <div><span class="stat-num">{{ totals.wins }}</span><span class="stat-lbl">Wins</span></div>
+        <div><span class="stat-num">{{ "%.0f"|format(totals.win_rate * 100) }}%</span><span class="stat-lbl">Win rate</span></div>
+        <div><span class="stat-num">{{ totals.commits }}</span><span class="stat-lbl">Commits</span></div>
+        <div><span class="stat-num" id="pv-verified">{{ verified_positions }}</span><span class="stat-lbl">Verified</span></div>
+      </div>
+      <div class="label preview-career-label">Career · <span id="pv-count">{{ career|length }}</span> positions</div>
+      <div class="preview-timeline" id="pv-timeline">
+        {% for p in career %}
+          <div class="pv-item" data-pos="{{ p.position_id }}">
+            <span class="pv-dot" style="background:{{ p.club_color }}"></span>
+            <div>
+              <span class="pv-club">{{ p.club_label }}</span>{% if p.status != 'verified' %} <span class="pv-pending">● pending</span>{% endif %}
+              <div class="pv-role">{{ p.role }}{% if p.years %} · <span class="mono">{{ p.years }}</span>{% endif %}</div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="strength">
+      <div class="strength-top"><span>Profile strength</span><span id="strength-pct">{{ profile_strength }}%</span></div>
+      <div class="strength-bar"><div class="strength-fill" id="strength-fill" style="width:{{ profile_strength }}%"></div></div>
+      <div class="strength-note" id="strength-note">{% if profile_strength < 100 %}Add a photo &amp; more positions to reach 100%{% else %}Looking great — ready to publish!{% endif %}</div>
+    </div>
+  </aside>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ request.url_for('static', path='/js/editor.js') }}?v={{ asset_v }}" defer></script>
+{% endblock %}
