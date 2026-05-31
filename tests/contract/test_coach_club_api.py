@@ -311,3 +311,37 @@ def test_compare_page_renders_with_radar(monkeypatch):
     assert r.status_code == 200
     assert "Profile overlay" in r.text
     assert "Drive Nation" in r.text
+
+
+# ── US6: tournament schedule ───────────────────────────────────────────────
+
+SCHEDULE_DATA = {
+    "months": [{"key": "2026-03", "label": "March 2026", "calendar": [],
+                "tournaments": [{"tournament_id": "t1", "name": "Lone Star Classic", "mo": "MAR", "day": "8",
+                                 "event_date": "2026-03-08", "venue": "Allen SP", "city": "Allen", "team_count": 212,
+                                 "age_lo": 12, "age_hi": 18, "division": "Open", "status": "Open", "within_mi": 12,
+                                 "featured": True, "completed": True}]}],
+    "month_options": [{"key": "2026-03", "label": "Mar 2026"}],
+    "counts": {"tournaments": 1, "teams": 212},
+    "map_points": [{"x": 62, "y": 26, "city": "Allen", "count": 1, "featured": True}],
+    "filters": {"open_only": False, "month": "", "within_mi": ""},
+    "data_state": {"completeness": "complete", "message": "Schedule loaded."},
+}
+
+
+def test_api_schedule_returns_counts_and_state(monkeypatch):
+    monkeypatch.setattr(api, "fetch_with_connection", lambda func, *a, **k: SCHEDULE_DATA)
+    client = TestClient(api.create_app())
+    r = client.get("/api/schedule?open_only=true&month=2026-03")
+    assert r.status_code == 200
+    assert r.json()["counts"]["tournaments"] == 1
+    assert r.json()["data_state"]["completeness"] == "complete"
+
+
+def test_schedule_page_renders(monkeypatch):
+    monkeypatch.setattr(api, "fetch_with_connection", lambda func, *a, **k: SCHEDULE_DATA)
+    client = TestClient(api.create_app())
+    r = client.get("/schedule")
+    assert r.status_code == 200
+    assert "Tournament schedule" in r.text
+    assert "Lone Star Classic" in r.text

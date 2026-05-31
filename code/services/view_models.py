@@ -1,6 +1,8 @@
+import calendar as _calendar
 import math
 import re
 from collections import Counter, defaultdict
+from datetime import date
 from typing import Any
 
 from .club_normalization import normalize_club_name
@@ -563,6 +565,88 @@ def build_multi_comparison(clubs: list[dict]) -> dict:
         "metrics": metrics,
         "radar": radar,
         "data_state": serialize_data_state(clubs, message="Comparison loaded." if clubs else "Pin clubs to compare."),
+    }
+
+
+# ── Tournament schedule (US6) ───────────────────────────────────────────────
+
+_CITY_POS = {
+    "Irving": [55, 40], "Dallas": [50, 56], "Arlington": [30, 60], "Plano": [56, 34],
+    "Frisco": [50, 22], "Allen": [62, 26], "Denton": [34, 18], "Fort Worth": [22, 58],
+}
+
+
+def _shape_tournament(r: dict) -> dict:
+    ev = r.get("event_date")
+    return {
+        "tournament_id": r["tournament_id"],
+        "name": r.get("name") or r["tournament_id"],
+        "month_key": r.get("month_key") or (ev.strftime("%Y-%m") if hasattr(ev, "strftime") else ""),
+        "mo": ev.strftime("%b").upper() if hasattr(ev, "strftime") else "",
+        "day": str(ev.day) if hasattr(ev, "day") else "",
+        "event_date": ev.isoformat() if hasattr(ev, "isoformat") else "",
+        "venue": r.get("venue") or "",
+        "city": r.get("city") or "",
+        "team_count": int(r.get("team_count") or 0),
+        "age_lo": r.get("age_lo"),
+        "age_hi": r.get("age_hi"),
+        "division": r.get("division") or "",
+        "status": r.get("status") or "Open",
+        "within_mi": r.get("within_mi"),
+        "featured": bool(r.get("featured")),
+        "completed": bool(r.get("completed")),
+    }
+
+
+def _schedule_calendar(month_key: str, tournaments: list[dict]) -> list[list[dict]]:
+    year, month = int(month_key[:4]), int(month_key[5:7])
+    by_day: dict[int, list] = {}
+    for t in tournaments:
+        if t["day"]:
+            by_day.setdefault(int(t["day"]), []).append(t)
+    grid = []
+    for week in _calendar.Calendar(firstweekday=6).monthdayscalendar(year, month):
+        grid.append([{"day": d or None, "events": by_day.get(d, []) if d else []} for d in week])
+    return grid
+
+
+def build_schedule(rows: list[dict], filters: dict, all_months: list[str] | None = None) -> dict:
+    shaped = [_shape_tournament(r) for r in rows]
+    month_options = [
+        {"key": mk, "label": date(int(mk[:4]), int(mk[5:7]), 1).strftime("%b %Y")}
+        for mk in (all_months or [])
+    ]
+    months_map: dict[str, list] = {}
+    for t in shaped:
+        months_map.setdefault(t["month_key"], []).append(t)
+    months = []
+    for mk in sorted(k for k in months_map if k):
+        year, month = int(mk[:4]), int(mk[5:7])
+        months.append({
+            "key": mk,
+            "label": date(year, month, 1).strftime("%B %Y"),
+            "tournaments": months_map[mk],
+            "calendar": _schedule_calendar(mk, months_map[mk]),
+        })
+    city_groups: dict[str, dict] = {}
+    for t in shaped:
+        if not t["city"]:
+            continue
+        g = city_groups.setdefault(t["city"], {"city": t["city"], "count": 0, "featured": False})
+        g["count"] += 1
+        g["featured"] = g["featured"] or t["featured"]
+    map_points = []
+    for city, g in city_groups.items():
+        p = _CITY_POS.get(city, [50, 50])
+        map_points.append({"x": p[0], "y": p[1], "city": city, "count": g["count"], "featured": g["featured"]})
+    return {
+        "months": months,
+        "month_options": month_options,
+        "counts": {"tournaments": len(shaped), "teams": sum(t["team_count"] for t in shaped)},
+        "map_points": map_points,
+        "filters": filters,
+        "data_state": serialize_data_state(
+            shaped, message="No tournaments match these filters." if not shaped else "Schedule loaded."),
     }
 
 

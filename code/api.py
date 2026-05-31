@@ -21,6 +21,7 @@ from services.analytics_queries import (
     get_tournaments,
 )
 from services.coach_queries import get_coach_directory, get_coach_profile, get_director_queue
+from services.schedule_queries import get_schedule
 from services.view_models import compute_profile_strength, serialize_data_state
 
 load_dotenv()
@@ -290,6 +291,12 @@ def create_app() -> FastAPI:
         logger.info("api_resolve_request request=%s decision=%s applied=%s", request_id, decision, result["applied"])
         return JSONResponse(status_code=200, content={"request_id": result["request_id"], "status": result["status"], "applied": result["applied"]})
 
+    @app.get("/api/schedule")
+    def api_schedule(open_only: bool = False, month: str | None = None, within_mi: int | None = None):
+        data = fetch_with_connection(get_schedule, open_only, month, within_mi)
+        logger.info("api_schedule open_only=%s month=%s within=%s state=%s", open_only, month, within_mi, data["data_state"]["completeness"])
+        return data
+
     @app.get("/coaches", response_class=HTMLResponse)
     def coaches_page(request: Request, q: str | None = None, verified_only: bool = False):
         data = api_coaches(q, verified_only)
@@ -312,6 +319,11 @@ def create_app() -> FastAPI:
     def director_page(request: Request, club_key: str | None = None):
         data = fetch_with_connection(get_director_queue, club_key)
         return templates.TemplateResponse("director.html", {"request": request, **data})
+
+    @app.get("/schedule", response_class=HTMLResponse)
+    def schedule_page(request: Request, open_only: bool = False, month: str | None = None, within_mi: int | None = None):
+        data = api_schedule(open_only, month, within_mi)
+        return templates.TemplateResponse("schedule.html", {"request": request, **data})
 
     @app.get("/tournaments")
     def read_tournaments():

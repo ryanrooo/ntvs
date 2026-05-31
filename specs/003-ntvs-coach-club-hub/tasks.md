@@ -200,16 +200,16 @@ that every story builds on.
 
 ### Tests for User Story 6 ⚠️ (write first, must fail)
 
-- [ ] T058 [P] [US6] Contract test for `GET /api/schedule` (`open_only`/`month`/`within_mi` filters, `counts.{tournaments,teams}`, `data_state`, empty state) in `tests/contract/test_coach_club_api.py`
-- [ ] T059 [P] [US6] Integration test for schedule queries (month grouping, filter combinations, count totals) in `tests/integration/test_schedule_queries.py`
+- [X] T058 [P] [US6] Contract test for `GET /api/schedule` (`open_only`/`month`/`within_mi` filters, `counts.{tournaments,teams}`, `data_state`, empty state) in `tests/contract/test_coach_club_api.py`
+- [X] T059 [P] [US6] Integration test for schedule queries (month grouping, filter combinations, count totals) in `tests/integration/test_schedule_queries.py`
 
 ### Implementation for User Story 6
 
-- [ ] T060 [P] [US6] Implement schedule read + filtering (join `tournament_schedule`, `open_only`/`month`/`within_mi`, month grouping, tournaments+teams counts, list/calendar/map-ready data) in `code/services/schedule_queries.py`
-- [ ] T061 [US6] Add `GET /api/schedule` endpoint and `/schedule` page route with `logger.info(data_state)` in `code/api.py`
-- [ ] T062 [P] [US6] Create schedule template — list grouped by month (date/name/venue/city/teams/age range/division/status chip, completed → results link), calendar month grid, schematic DFW map with city pins, filters (open-only/month/proximity) + clear-all + live "N tournaments · N teams" count + empty state — in `code/templates/schedule.html`
-- [ ] T063 [US6] Extend `code/static/js/tabs.js` for schedule list/calendar/map view switching that preserves active filters
-- [ ] T064 [US6] Add schedule list / calendar / map / status-chip styles to `code/static/css/club_analytics.css`
+- [X] T060 [P] [US6] Implement schedule read + filtering (join `tournament_schedule`, `open_only`/`month`/`within_mi`, month grouping, tournaments+teams counts, list/calendar/map-ready data) in `code/services/schedule_queries.py`
+- [X] T061 [US6] Add `GET /api/schedule` endpoint and `/schedule` page route with `logger.info(data_state)` in `code/api.py`
+- [X] T062 [P] [US6] Create schedule template — list grouped by month (date/name/venue/city/teams/age range/division/status chip, completed → results link), calendar month grid, schematic DFW map with city pins, filters (open-only/month/proximity) + clear-all + live "N tournaments · N teams" count + empty state — in `code/templates/schedule.html`
+- [X] T063 [US6] Extend `code/static/js/tabs.js` for schedule list/calendar/map view switching that preserves active filters
+- [X] T064 [US6] Add schedule list / calendar / map / status-chip styles to `code/static/css/club_analytics.css`
 
 **Checkpoint**: Tournament discovery works across all three views with filters preserved.
 

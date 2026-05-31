@@ -1,0 +1,97 @@
+{% extends "layout.html" %}
+{% block title %}Schedule — NTVS{% endblock %}
+{% block content %}
+
+<div class="sched-head">
+  <div>
+    <span class="kicker">Spring 2026 · Region 9</span>
+    <h1 class="editor-title">Tournament schedule</h1>
+  </div>
+  <div class="view-toggle" data-tabs>
+    <button type="button" class="view-btn is-active" data-tab="list">List</button>
+    <button type="button" class="view-btn" data-tab="calendar">Calendar</button>
+    <button type="button" class="view-btn" data-tab="map">Map</button>
+  </div>
+</div>
+
+<form class="sched-filters" action="/schedule" method="get">
+  <label class="toggle-pill">
+    <input type="checkbox" name="open_only" value="true" {% if filters.open_only %}checked{% endif %} onchange="this.form.submit()" /> Open only
+  </label>
+  <select name="month" class="cmp-add" onchange="this.form.submit()" aria-label="Month">
+    <option value="">All months</option>
+    {% for m in month_options %}<option value="{{ m.key }}" {% if filters.month == m.key %}selected{% endif %}>{{ m.label }}</option>{% endfor %}
+  </select>
+  <select name="within_mi" class="cmp-add" onchange="this.form.submit()" aria-label="Proximity">
+    <option value="">Any distance</option>
+    {% for mi in [15, 30, 60] %}<option value="{{ mi }}" {% if filters.within_mi == mi %}selected{% endif %}>Within {{ mi }}mi</option>{% endfor %}
+  </select>
+  {% if filters.open_only or filters.month or filters.within_mi %}<a class="sched-clear" href="/schedule">Clear</a>{% endif %}
+  <span class="sched-count">{{ counts.tournaments }} tournaments · {{ "{:,}".format(counts.teams) }} teams</span>
+</form>
+
+{% if months %}
+  <section class="tab-panel is-active" data-panel="list">
+    {% for mo in months %}
+      <div class="sched-month">
+        <div class="sched-month-head"><h2>{{ mo.label }}</h2><div class="divider-line"></div></div>
+        <div class="sched-list">
+          {% for e in mo.tournaments %}
+            <a class="sched-row {% if e.featured %}is-featured{% endif %}" href="{% if e.completed %}/results/{{ e.tournament_id }}{% else %}#{% endif %}">
+              <div class="sched-date">
+                <span class="sched-mo">{{ e.mo }}</span>
+                <span class="sched-day {% if e.featured %}is-featured{% endif %}">{{ e.day }}</span>
+              </div>
+              <div class="sched-info">
+                <div class="sched-name">{{ e.name }}
+                  {% if e.featured %}<span class="chip chip-amber">Featured</span>{% endif %}
+                  {% if e.completed %}<span class="chip chip-cyan">Results in</span>{% endif %}
+                </div>
+                <div class="sched-venue">📍 {{ e.venue }}{% if e.city %} · {{ e.city }}{% endif %}</div>
+              </div>
+              <div class="sched-teams"><span class="stat-num">{{ e.team_count }}</span><span class="stat-lbl">teams</span></div>
+              <div class="sched-meta">{% if e.age_lo and e.age_hi %}<span>{{ e.age_lo }}–{{ e.age_hi }}s</span>{% endif %}<span class="sched-div">{{ e.division }}</span></div>
+              <div class="sched-status">
+                <span class="chip {% if e.status == 'Open' %}chip-win{% elif e.status == 'Filling' %}chip-amber{% else %}chip-loss{% endif %}">{{ e.status }}</span>
+                <span class="sched-link">{% if e.completed %}Results →{% else %}Details →{% endif %}</span>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </section>
+
+  <section class="tab-panel" data-panel="calendar">
+    {% for mo in months %}
+      <div class="card cal-card">
+        <h3 class="cal-title">{{ mo.label }}</h3>
+        <div class="cal-grid">
+          {% for d in ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] %}<div class="cal-dow">{{ d }}</div>{% endfor %}
+          {% for week in mo.calendar %}{% for cell in week %}
+            <div class="cal-cell {% if cell.events %}has-event{% endif %}">
+              {% if cell.day %}<span class="cal-daynum">{{ cell.day }}</span>{% endif %}
+              {% for ev in cell.events[:2] %}<a class="cal-ev" href="{% if ev.completed %}/results/{{ ev.tournament_id }}{% else %}#{% endif %}">{{ ev.name[:14] }}</a>{% endfor %}
+            </div>
+          {% endfor %}{% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </section>
+
+  <section class="tab-panel" data-panel="map">
+    <div class="card map-card">
+      <span class="label map-label">DFW Metroplex</span>
+      {% for p in map_points %}
+        <div class="map-pin" style="left:{{ p.x }}%;top:{{ p.y }}%">
+          <span class="pin-dot {% if p.featured %}is-featured{% endif %}"></span>
+          <span class="pin-label">{{ p.city }}<small>{{ p.count }} event{{ '' if p.count == 1 else 's' }}</small></span>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{% else %}
+  <div class="empty-state">{{ data_state.message }}</div>
+{% endif %}
+
+{% endblock %}

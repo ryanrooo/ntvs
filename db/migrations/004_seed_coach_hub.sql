@@ -129,8 +129,8 @@ INSERT INTO tournament_schedule (tournament_id, event_date, month_key, venue, ci
                                  age_lo, age_hi, division, status, within_mi, featured, completed)
 SELECT
     t.tournament_id,
-    (DATE '2026-03-01' + (n.rn * 14))                              AS event_date,
-    to_char(DATE '2026-03-01' + (n.rn * 14), 'YYYY-MM')            AS month_key,
+    (DATE '2026-03-01' + ((n.rn % 16) * 7))                        AS event_date,
+    to_char(DATE '2026-03-01' + ((n.rn % 16) * 7), 'YYYY-MM')      AS month_key,
     (ARRAY['Irving Convention Center','Dallas Market Hall','Esports Stadium Arlington','Plano Event Center'])[1 + (n.rn % 4)] AS venue,
     (ARRAY['Irving','Dallas','Arlington','Plano','Frisco'])[1 + (n.rn % 5)] AS city,
     24 + (n.rn % 5) * 8                                            AS team_count,

@@ -18,7 +18,7 @@
         <a class="site-link {% if path == '/' %}active{% endif %}" href="/">Home</a>
         <a class="site-link {% if path.startswith('/clubs') %}active{% endif %}" href="/clubs">Clubs</a>
         <a class="site-link {% if path.startswith('/compare') %}active{% endif %}" href="/compare">Compare</a>
-        <a class="site-link" href="#" title="Coming soon">Schedule</a>
+        <a class="site-link {% if path.startswith('/schedule') %}active{% endif %}" href="/schedule">Schedule</a>
         <a class="site-link {% if path.startswith('/pool-results') %}active{% endif %}" href="/pool-results">Results</a>
         <a class="site-link {% if path.startswith('/coaches') %}active{% endif %}" href="/coaches">Coaches</a>
       </nav>
