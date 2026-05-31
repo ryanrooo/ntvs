@@ -16,10 +16,12 @@ from services.analytics_queries import (
     get_club_profile,
     get_club_rankings,
     get_homepage_data,
+    get_multi_club_comparison,
     get_pool_results,
     get_tournaments,
 )
 from services.coach_queries import get_coach_directory, get_coach_profile, get_director_queue
+from services.schedule_queries import get_results, get_schedule
 from services.view_models import compute_profile_strength, serialize_data_state
 
 load_dotenv()
@@ -95,15 +97,20 @@ def create_app() -> FastAPI:
         logger.info("api_clubs q=%s sort=%s division=%s state=%s", q, sort, division, state["completeness"])
         return {"clubs": clubs, "data_state": state}
 
+    def _compare_keys(clubs, club_a, club_b):
+        keys = [k for k in (clubs or []) if k] or [k for k in (club_a, club_b) if k]
+        seen: set = set()
+        return [k for k in keys if not (k in seen or seen.add(k))]
+
     @app.get("/api/clubs/compare")
-    def api_club_compare(club_a: str = Query(...), club_b: str = Query(...)):
-        comparison = fetch_with_connection(get_club_comparison, club_a, club_b)
-        logger.info(
-            "api_club_compare club_a=%s club_b=%s state=%s",
-            club_a,
-            club_b,
-            comparison["data_state"]["completeness"],
-        )
+    def api_club_compare(clubs: list[str] | None = Query(default=None), club_a: str | None = None, club_b: str | None = None):
+        # Accepts a repeatable `clubs` param (2–4) with precedence over the legacy
+        # club_a/club_b pair (backward compatible).
+        keys = _compare_keys(clubs, club_a, club_b)
+        if not (2 <= len(keys) <= 4):
+            return JSONResponse(status_code=422, content={"error": "invalid", "message": "Compare needs 2 to 4 clubs."})
+        comparison = fetch_with_connection(get_multi_club_comparison, keys)
+        logger.info("api_club_compare n=%s state=%s", len(keys), comparison["data_state"]["completeness"])
         return comparison
 
     @app.get("/api/clubs/{club_key}")
@@ -150,20 +157,17 @@ def create_app() -> FastAPI:
         })
 
     @app.get("/compare", response_class=HTMLResponse)
-    def compare_page(request: Request, club_a: str | None = None, club_b: str | None = None):
-        clubs = api_clubs()
-        comparison = None
-        if club_a and club_b:
-            comparison = api_club_compare(club_a, club_b)
+    def compare_page(request: Request, clubs: list[str] | None = Query(default=None), club_a: str | None = None, club_b: str | None = None):
+        # pinned set: explicit clubs param > legacy pair > the ntvs_pins cookie
+        keys = _compare_keys(clubs, club_a, club_b)
+        if not keys:
+            keys = [k for k in request.cookies.get("ntvs_pins", "").split(",") if k]
+        keys = keys[:4]
+        options = api_clubs()["clubs"]
+        comparison = fetch_with_connection(get_multi_club_comparison, keys) if len(keys) >= 2 else None
         return templates.TemplateResponse(
             "club_comparison.html",
-            {
-                "request": request,
-                "club_options": clubs["clubs"],
-                "comparison": comparison,
-                "club_a": club_a or "",
-                "club_b": club_b or "",
-            },
+            {"request": request, "club_options": options, "comparison": comparison, "pinned": keys},
         )
 
     @app.get("/api/coaches")
@@ -287,6 +291,20 @@ def create_app() -> FastAPI:
         logger.info("api_resolve_request request=%s decision=%s applied=%s", request_id, decision, result["applied"])
         return JSONResponse(status_code=200, content={"request_id": result["request_id"], "status": result["status"], "applied": result["applied"]})
 
+    @app.get("/api/schedule")
+    def api_schedule(open_only: bool = False, month: str | None = None, within_mi: int | None = None):
+        data = fetch_with_connection(get_schedule, open_only, month, within_mi)
+        logger.info("api_schedule open_only=%s month=%s within=%s state=%s", open_only, month, within_mi, data["data_state"]["completeness"])
+        return data
+
+    @app.get("/api/results/{tournament_id}")
+    def api_results(tournament_id: str):
+        results = fetch_with_connection(get_results, tournament_id)
+        if results is None:
+            raise HTTPException(status_code=404, detail="Tournament not found")
+        logger.info("api_results tournament=%s state=%s", tournament_id, results["data_state"]["completeness"])
+        return results
+
     @app.get("/coaches", response_class=HTMLResponse)
     def coaches_page(request: Request, q: str | None = None, verified_only: bool = False):
         data = api_coaches(q, verified_only)
@@ -309,6 +327,16 @@ def create_app() -> FastAPI:
     def director_page(request: Request, club_key: str | None = None):
         data = fetch_with_connection(get_director_queue, club_key)
         return templates.TemplateResponse("director.html", {"request": request, **data})
+
+    @app.get("/schedule", response_class=HTMLResponse)
+    def schedule_page(request: Request, open_only: bool = False, month: str | None = None, within_mi: int | None = None):
+        data = api_schedule(open_only, month, within_mi)
+        return templates.TemplateResponse("schedule.html", {"request": request, **data})
+
+    @app.get("/results/{tournament_id}", response_class=HTMLResponse)
+    def results_page(request: Request, tournament_id: str):
+        results = api_results(tournament_id)
+        return templates.TemplateResponse("results.html", {"request": request, **results})
 
     @app.get("/tournaments")
     def read_tournaments():

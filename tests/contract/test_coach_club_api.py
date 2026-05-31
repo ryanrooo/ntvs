@@ -252,3 +252,153 @@ def test_director_page_renders(monkeypatch):
     assert r.status_code == 200
     assert "Pending requests" in r.text
     assert "Priya Nair" in r.text
+
+
+# ── US5: multi-club compare (clubs[] 2–4, backward compatible) ─────────────
+
+COMPARE_DATA = {
+    "clubs": [{"club_key": "drive-nation", "display_name": "Drive Nation", "color": "#f5c518", "tier": 1, "rank": 2, "win_rate": 0.74, "city": None}],
+    "metrics": [{"label": "Win percentage", "key": "win_rate", "dir": 1, "values": {}, "display": {"drive-nation": "74%"}, "best_club_key": "drive-nation"}],
+    "radar": {"axes": ["Win %"], "axis_labels": [{"name": "Win %", "x": 110, "y": 30}], "grid": "110,30", "series": [{"club_key": "drive-nation", "display_name": "Drive Nation", "color": "#f5c518", "points": "110,40"}]},
+    "data_state": {"completeness": "complete", "message": "Comparison loaded."},
+}
+
+
+def test_compare_legacy_pair_still_works(monkeypatch):
+    captured = {}
+
+    def fake(func, *a, **k):
+        captured["keys"] = a[0] if a else None
+        return COMPARE_DATA
+    monkeypatch.setattr(api, "fetch_with_connection", fake)
+    client = TestClient(api.create_app())
+    r = client.get("/api/clubs/compare?club_a=drive-nation&club_b=madfrog")
+    assert r.status_code == 200
+    assert captured["keys"] == ["drive-nation", "madfrog"]
+
+
+def test_compare_clubs_param_takes_precedence(monkeypatch):
+    captured = {}
+
+    def fake(func, *a, **k):
+        captured["keys"] = a[0] if a else None
+        return COMPARE_DATA
+    monkeypatch.setattr(api, "fetch_with_connection", fake)
+    client = TestClient(api.create_app())
+    r = client.get("/api/clubs/compare?clubs=a&clubs=b&clubs=c&club_a=x&club_b=y")
+    assert r.status_code == 200
+    assert captured["keys"] == ["a", "b", "c"]
+
+
+def test_compare_rejects_fewer_than_two():
+    client = TestClient(api.create_app())
+    assert client.get("/api/clubs/compare?clubs=a").status_code == 422
+
+
+def test_compare_rejects_more_than_four():
+    client = TestClient(api.create_app())
+    assert client.get("/api/clubs/compare?clubs=a&clubs=b&clubs=c&clubs=d&clubs=e").status_code == 422
+
+
+def test_compare_page_renders_with_radar(monkeypatch):
+    def fake(func, *a, **k):
+        if getattr(func, "__name__", "") == "get_club_rankings":
+            return [{"club_key": "drive-nation", "display_name": "Drive Nation", "rank": 2, "teams_active": 2, "win_rate": 0.74, "trend_label": "Stable"}]
+        return COMPARE_DATA
+    monkeypatch.setattr(api, "fetch_with_connection", fake)
+    client = TestClient(api.create_app())
+    r = client.get("/compare?clubs=drive-nation&clubs=madfrog")
+    assert r.status_code == 200
+    assert "Profile overlay" in r.text
+    assert "Drive Nation" in r.text
+
+
+# ── US6: tournament schedule ───────────────────────────────────────────────
+
+SCHEDULE_DATA = {
+    "months": [{"key": "2026-03", "label": "March 2026", "calendar": [],
+                "tournaments": [{"tournament_id": "t1", "name": "Lone Star Classic", "mo": "MAR", "day": "8",
+                                 "event_date": "2026-03-08", "venue": "Allen SP", "city": "Allen", "team_count": 212,
+                                 "age_lo": 12, "age_hi": 18, "division": "Open", "status": "Open", "within_mi": 12,
+                                 "featured": True, "completed": True}]}],
+    "month_options": [{"key": "2026-03", "label": "Mar 2026"}],
+    "counts": {"tournaments": 1, "teams": 212},
+    "map_points": [{"x": 62, "y": 26, "city": "Allen", "count": 1, "featured": True}],
+    "filters": {"open_only": False, "month": "", "within_mi": ""},
+    "data_state": {"completeness": "complete", "message": "Schedule loaded."},
+}
+
+
+def test_api_schedule_returns_counts_and_state(monkeypatch):
+    monkeypatch.setattr(api, "fetch_with_connection", lambda func, *a, **k: SCHEDULE_DATA)
+    client = TestClient(api.create_app())
+    r = client.get("/api/schedule?open_only=true&month=2026-03")
+    assert r.status_code == 200
+    assert r.json()["counts"]["tournaments"] == 1
+    assert r.json()["data_state"]["completeness"] == "complete"
+
+
+def test_schedule_page_renders(monkeypatch):
+    monkeypatch.setattr(api, "fetch_with_connection", lambda func, *a, **k: SCHEDULE_DATA)
+    client = TestClient(api.create_app())
+    r = client.get("/schedule")
+    assert r.status_code == 200
+    assert "Tournament schedule" in r.text
+    assert "Lone Star Classic" in r.text
+
+
+# ── US7: tournament results ────────────────────────────────────────────────
+
+RESULTS_DATA = {
+    "tournament": {"tournament_id": "t1", "name": "Lone Star Classic"},
+    "podium": [
+        {"placement": 1, "medal": "🥇", "team_name": "Drive Nation 18B", "club_key": "drive-nation", "club_name": "Drive Nation"},
+        {"placement": 2, "medal": "🥈", "team_name": "Lone Star 18P", "club_key": None, "club_name": "Lone Star"},
+        {"placement": 3, "medal": "🥉", "team_name": "Skyline 18R", "club_key": None, "club_name": "Skyline"},
+    ],
+    "champion": {"placement": 1, "medal": "🥇", "team_name": "Drive Nation 18B", "club_key": "drive-nation", "club_name": "Drive Nation"},
+    "rounds": [{"label": "Final", "matches": [{"match_id": "m1", "team_name": "Drive Nation 18B", "opponent_name": "Lone Star 18P", "team_won": True, "score_log": "25-19,25-22"}]}],
+    "standings": [{"rank": 1, "team_name": "Drive Nation 18B", "division": "18 Open", "record": "6–0", "point_diff": 40}],
+    "scores": [{"round": "Final", "match_id": "m1", "team_name": "Drive Nation 18B", "opponent_name": "Lone Star 18P", "team_won": True, "score_log": "25-19,25-22"}],
+    "leaders": {"kills": [{"rank": 1, "player_name": "A. Johnson", "club_label": "Drive Nation", "value": 58}], "assists": [], "digs": []},
+    "has_bracket": True, "has_standings": True, "has_leaders": True,
+    "data_state": {"completeness": "complete", "message": "Results loaded."},
+}
+
+
+def test_api_results_returns_bundle(monkeypatch):
+    monkeypatch.setattr(api, "fetch_with_connection", lambda func, *a, **k: RESULTS_DATA)
+    client = TestClient(api.create_app())
+    r = client.get("/api/results/t1")
+    assert r.status_code == 200
+    assert r.json()["champion"]["team_name"] == "Drive Nation 18B"
+    assert len(r.json()["podium"]) == 3
+
+
+def test_api_results_404_when_missing(monkeypatch):
+    monkeypatch.setattr(api, "fetch_with_connection", lambda func, *a, **k: None)
+    client = TestClient(api.create_app())
+    assert client.get("/api/results/nope").status_code == 404
+
+
+def test_results_page_renders(monkeypatch):
+    monkeypatch.setattr(api, "fetch_with_connection", lambda func, *a, **k: RESULTS_DATA)
+    client = TestClient(api.create_app())
+    r = client.get("/results/t1")
+    assert r.status_code == 200
+    assert "Championship bracket" in r.text
+    assert "Drive Nation 18B" in r.text
+    assert "Statistical leaders" in r.text
+
+
+def test_results_page_marks_unavailable_sections(monkeypatch):
+    bare = dict(RESULTS_DATA)
+    bare.update({"podium": [], "champion": None, "rounds": [], "standings": [], "scores": [],
+                 "leaders": {"kills": [], "assists": [], "digs": []},
+                 "has_bracket": False, "has_standings": False, "has_leaders": False,
+                 "data_state": {"completeness": "empty", "message": "No results recorded for this tournament yet."}})
+    monkeypatch.setattr(api, "fetch_with_connection", lambda func, *a, **k: bare)
+    client = TestClient(api.create_app())
+    r = client.get("/results/t1")
+    assert r.status_code == 200
+    assert "unavailable" in r.text

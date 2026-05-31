@@ -175,18 +175,18 @@ that every story builds on.
 
 ### Tests for User Story 5 ⚠️ (write first, must fail)
 
-- [ ] T049 [P] [US5] Unit test `tests/unit/test_compare_metrics.py` — best value per metric, `dir=-1` (lower-is-better) for season fee, and best-marker suppression when all values tie
-- [ ] T050 [P] [US5] Contract test for `GET /api/clubs/compare` (legacy `club_a`+`club_b` compat; repeatable `clubs` 2–4 with precedence; 422 outside 2–4; `metrics[].best_club_key` + `dir`; `radar` axes/series; `data_state`) in `tests/contract/test_coach_club_api.py`
+- [X] T049 [P] [US5] Unit test `tests/unit/test_compare_metrics.py` — best value per metric, `dir=-1` (lower-is-better) for season fee, and best-marker suppression when all values tie
+- [X] T050 [P] [US5] Contract test for `GET /api/clubs/compare` (legacy `club_a`+`club_b` compat; repeatable `clubs` 2–4 with precedence; 422 outside 2–4; `metrics[].best_club_key` + `dir`; `radar` axes/series; `data_state`) in `tests/contract/test_coach_club_api.py`
 
 ### Implementation for User Story 5
 
-- [ ] T051 [US5] Implement N-club compare data assembly (rank, win %, teams, gold/silver/bronze, coaches, commits, fee, city) from `club_season_summary` + `club_attributes` in `code/services/analytics_queries.py`
-- [ ] T052 [US5] Add compare shaping in `code/services/view_models.py` — `best_club_key` per metric (dir-aware, tie suppression, neutral placeholder when missing) and radar normalization of the five `radar_*` axes to 0–1
-- [ ] T053 [US5] Extend `GET /api/clubs/compare` to accept repeatable `clubs` (2–4, precedence over `club_a`/`club_b`, 422 outside range) and add the `/compare` page route that reads the `ntvs_pins` cookie and the `clubs` param, in `code/api.py`
-- [ ] T054 [P] [US5] Update comparison template — up to 4 clubs metrics table (best-value highlight, neutral placeholders for missing fee/medals/radar), radar/spider chart with color-keyed legend, and empty state — in `code/templates/club_comparison.html`
-- [ ] T055 [P] [US5] Create `code/static/js/pins.js` — `ntvs_pins` cookie toggle, max-4 enforcement with a clear refusal message, pinned-count badge, and UI sync across directory/profile/compare
-- [ ] T056 [US5] Add pin/unpin toggle controls to `code/templates/club_rankings.html` and `code/templates/club_profile.html` (these templates are shared with US8)
-- [ ] T057 [US5] Add compare-table / radar / pin-toggle styles to `code/static/css/club_analytics.css`
+- [X] T051 [US5] Implement N-club compare data assembly (rank, win %, teams, gold/silver/bronze, coaches, commits, fee, city) from `club_season_summary` + `club_attributes` in `code/services/analytics_queries.py`
+- [X] T052 [US5] Add compare shaping in `code/services/view_models.py` — `best_club_key` per metric (dir-aware, tie suppression, neutral placeholder when missing) and radar normalization of the five `radar_*` axes to 0–1
+- [X] T053 [US5] Extend `GET /api/clubs/compare` to accept repeatable `clubs` (2–4, precedence over `club_a`/`club_b`, 422 outside range) and add the `/compare` page route that reads the `ntvs_pins` cookie and the `clubs` param, in `code/api.py`
+- [X] T054 [P] [US5] Update comparison template — up to 4 clubs metrics table (best-value highlight, neutral placeholders for missing fee/medals/radar), radar/spider chart with color-keyed legend, and empty state — in `code/templates/club_comparison.html`
+- [X] T055 [P] [US5] Create `code/static/js/pins.js` — `ntvs_pins` cookie toggle, max-4 enforcement with a clear refusal message, pinned-count badge, and UI sync across directory/profile/compare
+- [X] T056 [US5] Add pin/unpin toggle controls to `code/templates/club_rankings.html` and `code/templates/club_profile.html` (these templates are shared with US8)
+- [X] T057 [US5] Add compare-table / radar / pin-toggle styles to `code/static/css/club_analytics.css`
 
 **Checkpoint**: Multi-club comparison works; legacy two-club compare remains intact.
 
@@ -200,16 +200,16 @@ that every story builds on.
 
 ### Tests for User Story 6 ⚠️ (write first, must fail)
 
-- [ ] T058 [P] [US6] Contract test for `GET /api/schedule` (`open_only`/`month`/`within_mi` filters, `counts.{tournaments,teams}`, `data_state`, empty state) in `tests/contract/test_coach_club_api.py`
-- [ ] T059 [P] [US6] Integration test for schedule queries (month grouping, filter combinations, count totals) in `tests/integration/test_schedule_queries.py`
+- [X] T058 [P] [US6] Contract test for `GET /api/schedule` (`open_only`/`month`/`within_mi` filters, `counts.{tournaments,teams}`, `data_state`, empty state) in `tests/contract/test_coach_club_api.py`
+- [X] T059 [P] [US6] Integration test for schedule queries (month grouping, filter combinations, count totals) in `tests/integration/test_schedule_queries.py`
 
 ### Implementation for User Story 6
 
-- [ ] T060 [P] [US6] Implement schedule read + filtering (join `tournament_schedule`, `open_only`/`month`/`within_mi`, month grouping, tournaments+teams counts, list/calendar/map-ready data) in `code/services/schedule_queries.py`
-- [ ] T061 [US6] Add `GET /api/schedule` endpoint and `/schedule` page route with `logger.info(data_state)` in `code/api.py`
-- [ ] T062 [P] [US6] Create schedule template — list grouped by month (date/name/venue/city/teams/age range/division/status chip, completed → results link), calendar month grid, schematic DFW map with city pins, filters (open-only/month/proximity) + clear-all + live "N tournaments · N teams" count + empty state — in `code/templates/schedule.html`
-- [ ] T063 [US6] Extend `code/static/js/tabs.js` for schedule list/calendar/map view switching that preserves active filters
-- [ ] T064 [US6] Add schedule list / calendar / map / status-chip styles to `code/static/css/club_analytics.css`
+- [X] T060 [P] [US6] Implement schedule read + filtering (join `tournament_schedule`, `open_only`/`month`/`within_mi`, month grouping, tournaments+teams counts, list/calendar/map-ready data) in `code/services/schedule_queries.py`
+- [X] T061 [US6] Add `GET /api/schedule` endpoint and `/schedule` page route with `logger.info(data_state)` in `code/api.py`
+- [X] T062 [P] [US6] Create schedule template — list grouped by month (date/name/venue/city/teams/age range/division/status chip, completed → results link), calendar month grid, schematic DFW map with city pins, filters (open-only/month/proximity) + clear-all + live "N tournaments · N teams" count + empty state — in `code/templates/schedule.html`
+- [X] T063 [US6] Extend `code/static/js/tabs.js` for schedule list/calendar/map view switching that preserves active filters
+- [X] T064 [US6] Add schedule list / calendar / map / status-chip styles to `code/static/css/club_analytics.css`
 
 **Checkpoint**: Tournament discovery works across all three views with filters preserved.
 
@@ -223,16 +223,16 @@ that every story builds on.
 
 ### Tests for User Story 7 ⚠️ (write first, must fail)
 
-- [ ] T065 [P] [US7] Contract test for `GET /api/results/{tournament_id}` (podium/bracket/standings/scores/leaders + `data_state`; 404; sections marked unavailable when data missing) in `tests/contract/test_coach_club_api.py`
-- [ ] T066 [P] [US7] Integration test for results assembly (podium from `bracket_placements`, bracket from `bracket_matches`, standings from `pool_standings`, scores from `match_results`, leaders from `stat_leaders`) in `tests/integration/test_schedule_queries.py`
+- [X] T065 [P] [US7] Contract test for `GET /api/results/{tournament_id}` (podium/bracket/standings/scores/leaders + `data_state`; 404; sections marked unavailable when data missing) in `tests/contract/test_coach_club_api.py`
+- [X] T066 [P] [US7] Integration test for results assembly (podium from `bracket_placements`, bracket from `bracket_matches`, standings from `pool_standings`, scores from `match_results`, leaders from `stat_leaders`) in `tests/integration/test_schedule_queries.py`
 
 ### Implementation for User Story 7
 
-- [ ] T067 [US7] Implement results assembly read in `code/services/schedule_queries.py` (podium, bracket grouped by `round_label` with winner flag, standings, all-scores, leaders; graceful "unavailable" when bracket/leaders missing)
-- [ ] T068 [US7] Add `GET /api/results/{tournament_id}` endpoint and `/results/{tournament_id}` page route with `logger.info(data_state)` in `code/api.py`
-- [ ] T069 [P] [US7] Create results template — medal podium, championship bracket (rounds left→right, winners highlighted), final standings table, all-scores list (winner highlighted), stat leaders (kills/assists/digs or "unavailable"), with bracket/standings/all-scores view switch — in `code/templates/results.html`
-- [ ] T070 [US7] Extend `code/static/js/tabs.js` for results bracket/standings/all-scores switching
-- [ ] T071 [US7] Add podium / bracket / standings / scores / leaders styles to `code/static/css/club_analytics.css`
+- [X] T067 [US7] Implement results assembly read in `code/services/schedule_queries.py` (podium, bracket grouped by `round_label` with winner flag, standings, all-scores, leaders; graceful "unavailable" when bracket/leaders missing)
+- [X] T068 [US7] Add `GET /api/results/{tournament_id}` endpoint and `/results/{tournament_id}` page route with `logger.info(data_state)` in `code/api.py`
+- [X] T069 [P] [US7] Create results template — medal podium, championship bracket (rounds left→right, winners highlighted), final standings table, all-scores list (winner highlighted), stat leaders (kills/assists/digs or "unavailable"), with bracket/standings/all-scores view switch — in `code/templates/results.html`
+- [X] T070 [US7] Extend `code/static/js/tabs.js` for results bracket/standings/all-scores switching
+- [X] T071 [US7] Add podium / bracket / standings / scores / leaders styles to `code/static/css/club_analytics.css`
 
 **Checkpoint**: Completed tournaments surface full results from stored data.
 

@@ -1,5 +1,8 @@
+import calendar as _calendar
+import math
 import re
 from collections import Counter, defaultdict
+from datetime import date
 from typing import Any
 
 from .club_normalization import normalize_club_name
@@ -461,6 +464,262 @@ def build_director_dashboard(club_key, requests: list[dict], stats: dict, staff:
             partial=not club_key,
             message="All caught up — no pending requests." if not shaped_requests else "Director queue loaded.",
         ),
+    }
+
+
+# ── Multi-club comparison + radar (US5) ─────────────────────────────────────
+
+_RADAR_AXES = ["Win %", "Depth", "Gold", "Dev", "Alumni"]
+_RADAR_CX, _RADAR_CY, _RADAR_R = 110, 108, 78
+
+
+def _radar_points(values: list) -> str:
+    pts = []
+    for i in range(5):
+        v = values[i] if i < len(values) else 0
+        v = max(0.0, min(1.0, float(v or 0)))
+        ang = math.radians(-90 + i * 72)
+        x = _RADAR_CX + _RADAR_R * v * math.cos(ang)
+        y = _RADAR_CY + _RADAR_R * v * math.sin(ang)
+        pts.append(f"{x:.1f},{y:.1f}")
+    return " ".join(pts)
+
+
+def _radar_axis_labels() -> list[dict]:
+    out = []
+    for i, name in enumerate(_RADAR_AXES):
+        ang = math.radians(-90 + i * 72)
+        out.append({
+            "name": name,
+            "x": round(_RADAR_CX + (_RADAR_R + 14) * math.cos(ang), 1),
+            "y": round(_RADAR_CY + (_RADAR_R + 14) * math.sin(ang), 1),
+        })
+    return out
+
+
+def _best_club_key(clubs: list[dict], key: str, direction: int) -> str | None:
+    vals = [(c["club_key"], c.get(key)) for c in clubs if c.get(key) is not None]
+    if len(vals) < 2:
+        return None
+    nums = [v for _, v in vals]
+    if len(set(nums)) <= 1:  # all tie -> suppress the "best" marker
+        return None
+    target = max(nums) if direction > 0 else min(nums)
+    for ck, v in vals:
+        if v == target:
+            return ck
+    return None
+
+
+def build_multi_comparison(clubs: list[dict]) -> dict:
+    metric_defs = [
+        ("National rank", "rank", -1, "rank"),
+        ("Win percentage", "win_rate", 1, "pct"),
+        ("Active teams", "teams", 1, "num"),
+        ("Gold finishes", "gold", 1, "num"),
+        ("Silver / Bronze", "silver_bronze", 0, "sb"),
+        ("Coaching staff", "coaches", 1, "num"),
+        ("College commits", "commits", 1, "num"),
+        ("Season fee", "fee", -1, "money"),
+        ("Home city", "city", 0, "text"),
+    ]
+    metrics = []
+    for label, key, direction, fmt in metric_defs:
+        values, display = {}, {}
+        for c in clubs:
+            ck = c["club_key"]
+            if fmt == "sb":
+                s, b = c.get("silver"), c.get("bronze")
+                values[ck] = None
+                display[ck] = f"{s if s is not None else '—'} / {b if b is not None else '—'}"
+            elif fmt == "text":
+                values[ck] = None
+                display[ck] = c.get(key) or "—"
+            else:
+                v = c.get(key)
+                values[ck] = v
+                if v is None:
+                    display[ck] = "—"
+                elif fmt == "rank":
+                    display[ck] = f"#{v}"
+                elif fmt == "pct":
+                    display[ck] = f"{round(float(v) * 100)}%"
+                elif fmt == "money":
+                    display[ck] = f"${int(v):,}"
+                else:
+                    display[ck] = str(v)
+        best = _best_club_key(clubs, key, direction) if direction != 0 else None
+        metrics.append({"label": label, "key": key, "dir": direction, "values": values, "display": display, "best_club_key": best})
+
+    radar = {
+        "axes": _RADAR_AXES,
+        "axis_labels": _radar_axis_labels(),
+        "grid": _radar_points([1, 1, 1, 1, 1]),
+        "series": [
+            {"club_key": c["club_key"], "display_name": c["display_name"], "color": c["color"], "points": _radar_points(c.get("radar") or [])}
+            for c in clubs
+        ],
+    }
+    return {
+        "clubs": [{k: c.get(k) for k in ("club_key", "display_name", "color", "tier", "rank", "win_rate", "city")} for c in clubs],
+        "metrics": metrics,
+        "radar": radar,
+        "data_state": serialize_data_state(clubs, message="Comparison loaded." if clubs else "Pin clubs to compare."),
+    }
+
+
+# ── Tournament schedule (US6) ───────────────────────────────────────────────
+
+_CITY_POS = {
+    "Irving": [55, 40], "Dallas": [50, 56], "Arlington": [30, 60], "Plano": [56, 34],
+    "Frisco": [50, 22], "Allen": [62, 26], "Denton": [34, 18], "Fort Worth": [22, 58],
+}
+
+
+def _shape_tournament(r: dict) -> dict:
+    ev = r.get("event_date")
+    return {
+        "tournament_id": r["tournament_id"],
+        "name": r.get("name") or r["tournament_id"],
+        "month_key": r.get("month_key") or (ev.strftime("%Y-%m") if hasattr(ev, "strftime") else ""),
+        "mo": ev.strftime("%b").upper() if hasattr(ev, "strftime") else "",
+        "day": str(ev.day) if hasattr(ev, "day") else "",
+        "event_date": ev.isoformat() if hasattr(ev, "isoformat") else "",
+        "venue": r.get("venue") or "",
+        "city": r.get("city") or "",
+        "team_count": int(r.get("team_count") or 0),
+        "age_lo": r.get("age_lo"),
+        "age_hi": r.get("age_hi"),
+        "division": r.get("division") or "",
+        "status": r.get("status") or "Open",
+        "within_mi": r.get("within_mi"),
+        "featured": bool(r.get("featured")),
+        "completed": bool(r.get("completed")),
+    }
+
+
+def _schedule_calendar(month_key: str, tournaments: list[dict]) -> list[list[dict]]:
+    year, month = int(month_key[:4]), int(month_key[5:7])
+    by_day: dict[int, list] = {}
+    for t in tournaments:
+        if t["day"]:
+            by_day.setdefault(int(t["day"]), []).append(t)
+    grid = []
+    for week in _calendar.Calendar(firstweekday=6).monthdayscalendar(year, month):
+        grid.append([{"day": d or None, "events": by_day.get(d, []) if d else []} for d in week])
+    return grid
+
+
+def build_schedule(rows: list[dict], filters: dict, all_months: list[str] | None = None) -> dict:
+    shaped = [_shape_tournament(r) for r in rows]
+    month_options = [
+        {"key": mk, "label": date(int(mk[:4]), int(mk[5:7]), 1).strftime("%b %Y")}
+        for mk in (all_months or [])
+    ]
+    months_map: dict[str, list] = {}
+    for t in shaped:
+        months_map.setdefault(t["month_key"], []).append(t)
+    months = []
+    for mk in sorted(k for k in months_map if k):
+        year, month = int(mk[:4]), int(mk[5:7])
+        months.append({
+            "key": mk,
+            "label": date(year, month, 1).strftime("%B %Y"),
+            "tournaments": months_map[mk],
+            "calendar": _schedule_calendar(mk, months_map[mk]),
+        })
+    city_groups: dict[str, dict] = {}
+    for t in shaped:
+        if not t["city"]:
+            continue
+        g = city_groups.setdefault(t["city"], {"city": t["city"], "count": 0, "featured": False})
+        g["count"] += 1
+        g["featured"] = g["featured"] or t["featured"]
+    map_points = []
+    for city, g in city_groups.items():
+        p = _CITY_POS.get(city, [50, 50])
+        map_points.append({"x": p[0], "y": p[1], "city": city, "count": g["count"], "featured": g["featured"]})
+    return {
+        "months": months,
+        "month_options": month_options,
+        "counts": {"tournaments": len(shaped), "teams": sum(t["team_count"] for t in shaped)},
+        "map_points": map_points,
+        "filters": filters,
+        "data_state": serialize_data_state(
+            shaped, message="No tournaments match these filters." if not shaped else "Schedule loaded."),
+    }
+
+
+# ── Tournament results (US7) ────────────────────────────────────────────────
+
+_MEDALS = {1: "🥇", 2: "🥈", 3: "🥉"}
+
+
+def build_results(tournament: dict, placements: list[dict], bracket: list[dict],
+                  standings: list[dict], leaders: list[dict]) -> dict:
+    podium = []
+    for p in sorted(placements, key=lambda x: (x.get("placement") or 99)):
+        if p.get("placement") in (1, 2, 3):
+            podium.append({
+                "placement": p["placement"], "medal": _MEDALS.get(p["placement"], ""),
+                "team_name": p.get("team_name"), "club_key": p.get("club_key"),
+                "club_name": p.get("club_name") or p.get("team_name"),
+            })
+    podium = podium[:3]
+    champion = podium[0] if podium and podium[0]["placement"] == 1 else None
+
+    rounds_map: dict[str, list] = {}
+    seen: set = set()
+    for b in bracket:
+        mid = b.get("match_id")
+        if mid in seen:
+            continue
+        seen.add(mid)
+        rl = b.get("round_label") or "Bracket"
+        rounds_map.setdefault(rl, []).append({
+            "match_id": mid, "team_name": b.get("team_name"), "opponent_name": b.get("opponent_name"),
+            "team_won": b.get("outcome") == "Won", "score_log": b.get("score_log") or "",
+        })
+    rounds = [{"label": rl, "matches": ms} for rl, ms in rounds_map.items()]
+
+    standings_out = []
+    for i, s in enumerate(standings, start=1):
+        standings_out.append({
+            "rank": i, "team_name": s.get("team_name"), "division": s.get("division"),
+            "record": f"{int(s.get('matches_won') or 0)}–{int(s.get('matches_lost') or 0)}",
+            "point_diff": s.get("point_diff"),
+        })
+
+    scores = [{"round": r["label"], **m} for r in rounds for m in r["matches"]]
+
+    leaders_map: dict[str, list] = {"kills": [], "assists": [], "digs": []}
+    for ldr in leaders:
+        cat = ldr.get("category")
+        if cat in leaders_map:
+            leaders_map[cat].append({
+                "rank": ldr.get("rank"), "player_name": ldr.get("player_name"),
+                "club_label": ldr.get("club_label") or "", "value": ldr.get("value"),
+            })
+
+    has_bracket = bool(rounds)
+    has_standings = bool(standings_out)
+    has_leaders = any(leaders_map.values())
+    has_any = bool(podium) or has_bracket or has_standings
+    return {
+        "tournament": {"tournament_id": tournament["tournament_id"], "name": tournament["name"]},
+        "podium": podium,
+        "champion": champion,
+        "rounds": rounds,
+        "standings": standings_out,
+        "scores": scores,
+        "leaders": leaders_map,
+        "has_bracket": has_bracket,
+        "has_standings": has_standings,
+        "has_leaders": has_leaders,
+        "data_state": serialize_data_state(
+            [1] if has_any else [],
+            partial=has_any and not has_bracket,
+            message="Results loaded." if has_any else "No results recorded for this tournament yet."),
     }
 
 

@@ -1,136 +1,88 @@
 {% extends "layout.html" %}
-{% block title %}Club Comparison — NTVS{% endblock %}
+{% block title %}Compare clubs — NTVS{% endblock %}
 {% block content %}
 
-<div class="page-head">
-  <span class="eyebrow">Head-to-Head</span>
-  <h1>Club Comparison</h1>
-  <p>Compare two clubs side by side — ranking metrics and direct match history.</p>
+<div class="cmp-head">
+  <div>
+    <span class="kicker">Comparison</span>
+    <h1 class="editor-title">Club head-to-head</h1>
+  </div>
+  <div class="editor-actions">
+    <select class="cmp-add" data-add-club aria-label="Add a club to compare">
+      <option value="">+ Add club…</option>
+      {% for c in club_options %}{% if c.club_key not in pinned %}<option value="{{ c.club_key }}">{{ c.display_name }}</option>{% endif %}{% endfor %}
+    </select>
+    <button type="button" class="btn" data-reset-pins>Reset</button>
+  </div>
 </div>
 
-<section class="filters-bar">
-  <form action="/compare" method="get" class="filter-grid">
-    <label>Club A
-      <select name="club_a">
-        <option value="">Select club…</option>
-        {% for club in club_options %}
-          <option value="{{ club.club_key }}" {% if club_a == club.club_key %}selected{% endif %}>{{ club.display_name }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>Club B
-      <select name="club_b">
-        <option value="">Select club…</option>
-        {% for club in club_options %}
-          <option value="{{ club.club_key }}" {% if club_b == club.club_key %}selected{% endif %}>{{ club.display_name }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <button type="submit">Compare</button>
-  </form>
-</section>
-
-{% if comparison %}
-
-  {# ── Club cards ─────────────────────────────────────────── #}
-  <div class="comparison-grid">
-    <div class="compare-club-card side-a">
-      <div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;color:var(--accent);margin-bottom:10px">Club A</div>
-      <h2>{{ comparison.club_a.display_name }}</h2>
-      <p>{{ comparison.club_a.teams_active }} teams &bull; Score {{ comparison.club_a.ranking_score|int }}</p>
-      <div class="stats-strip" style="margin-top:20px;border-radius:6px">
-        <div class="stat-cell" style="padding:16px 18px">
-          <div class="stat-val" style="font-size:1.6rem">{{ "%.0f"|format(comparison.club_a.win_rate * 100) }}%</div>
-          <div class="stat-lbl">Win Rate</div>
+{% if comparison and comparison.clubs %}
+  <div class="cmp-cards">
+    {% for c in comparison.clubs %}
+      <div class="cmp-card" style="border-top-color:{{ c.color }}">
+        <button type="button" class="cmp-x" data-unpin="{{ c.club_key }}" title="Remove">✕</button>
+        <div class="cmp-card-top">
+          <span class="avatar" style="background:{{ c.color }}">{{ c.display_name[:2] | upper }}</span>
+          <div>
+            <a class="cmp-name" href="/clubs/{{ c.club_key }}">{{ c.display_name }}</a>
+            {% if c.tier %}<span class="tier tier-{{ c.tier }}">Tier {{ c.tier }}</span>{% endif %}
+          </div>
         </div>
-        <div class="stat-cell" style="padding:16px 18px">
-          <div class="stat-val neutral" style="font-size:1.6rem">{{ comparison.club_a.teams_active }}</div>
-          <div class="stat-lbl">Teams</div>
-        </div>
-      </div>
-    </div>
-    <div class="compare-club-card side-b">
-      <div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;color:var(--muted);margin-bottom:10px">Club B</div>
-      <h2>{{ comparison.club_b.display_name }}</h2>
-      <p>{{ comparison.club_b.teams_active }} teams &bull; Score {{ comparison.club_b.ranking_score|int }}</p>
-      <div class="stats-strip" style="margin-top:20px;border-radius:6px">
-        <div class="stat-cell" style="padding:16px 18px">
-          <div class="stat-val" style="font-size:1.6rem">{{ "%.0f"|format(comparison.club_b.win_rate * 100) }}%</div>
-          <div class="stat-lbl">Win Rate</div>
-        </div>
-        <div class="stat-cell" style="padding:16px 18px">
-          <div class="stat-val neutral" style="font-size:1.6rem">{{ comparison.club_b.teams_active }}</div>
-          <div class="stat-lbl">Teams</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {# ── Metrics ────────────────────────────────────────────── #}
-  <div class="card">
-    <div class="section-head"><h2>Metrics Breakdown</h2></div>
-    {% for metric in comparison.comparison_metrics %}
-      {% set a = metric.club_a_value %}
-      {% set b = metric.club_b_value %}
-      <div class="metric-block">
-        <div class="metric-label">{{ metric.label }}</div>
-        <div class="metric-vals">
-          <span class="metric-val {{ 'better' if a > b else '' }}">
-            {% if metric.label == 'Win Rate' %}{{ "%.1f"|format(a * 100) }}%{% else %}{{ a }}{% endif %}
-          </span>
-          <span class="metric-vs">vs</span>
-          <span class="metric-val {{ 'better' if b > a else '' }}">
-            {% if metric.label == 'Win Rate' %}{{ "%.1f"|format(b * 100) }}%{% else %}{{ b }}{% endif %}
-          </span>
+        <div class="cmp-card-stats">
+          <div><span class="stat-num" style="color:{{ c.color }}">{% if c.rank %}#{{ c.rank }}{% else %}—{% endif %}</span><span class="stat-lbl">Rank</span></div>
+          <div><span class="stat-num">{{ "%.0f"|format(c.win_rate * 100) }}%</span><span class="stat-lbl">Win</span></div>
         </div>
       </div>
     {% endfor %}
   </div>
+  <div class="cmp-pinned-note">Pinned · {{ comparison.clubs | length }} of 4</div>
 
-  {# ── Head-to-Head ───────────────────────────────────────── #}
-  <div class="card">
-    <div class="section-head"><h2>Direct Match History</h2></div>
-    {% if comparison.head_to_head.available %}
-      <div class="h2h-display">
-        <div class="h2h-num side-a">{{ comparison.head_to_head.club_a_wins }}</div>
-        <div class="h2h-mid">
-          <div class="h2h-total">{{ comparison.head_to_head.matches_played }}</div>
-          <div class="h2h-lbl">Matches</div>
-        </div>
-        <div class="h2h-num side-b">{{ comparison.head_to_head.club_b_wins }}</div>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:20px">
-        <span style="color:var(--accent)">{{ comparison.club_a.display_name }}</span>
-        <span>{{ comparison.club_b.display_name }}</span>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Team</th><th>Opponent</th><th>Result</th><th>Score</th></tr>
-          </thead>
-          <tbody>
-            {% for m in comparison.shared_matchups %}
-              <tr>
-                <td><span class="fw">{{ m.team_name }}</span></td>
-                <td>{{ m.opponent_name }}</td>
-                <td>
-                  {% if m.outcome == 'Won' %}<span class="badge badge-win">W</span>
-                  {% elif m.outcome == 'Lost' %}<span class="badge badge-loss">L</span>
-                  {% else %}<span style="color:var(--muted)">—</span>{% endif %}
+  <div class="cmp-layout">
+    <div class="card cmp-table-card">
+      <table class="cmp-table">
+        <tbody>
+          {% for m in comparison.metrics %}
+            <tr>
+              <th>{{ m.label }}</th>
+              {% for c in comparison.clubs %}
+                <td class="{% if m.best_club_key == c.club_key %}is-best{% endif %}">
+                  {{ m.display[c.club_key] }}{% if m.best_club_key == c.club_key %} <span class="best-badge">Best</span>{% endif %}
                 </td>
-                <td class="score-cell">{{ m.score_log or "—" }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% else %}
-      <div class="empty-state">{{ comparison.data_state.message }}</div>
-    {% endif %}
-  </div>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
 
+    <div class="card cmp-radar-card">
+      <h3 class="cmp-radar-title">Profile overlay</h3>
+      <p class="section-sub">Normalized 0–100 across five program factors.</p>
+      <svg class="radar-svg" viewBox="0 0 220 200" role="img" aria-label="Radar comparison">
+        <polygon class="radar-grid" points="{{ comparison.radar.grid }}" />
+        {% for ax in comparison.radar.axis_labels %}
+          <line class="radar-spoke" x1="110" y1="108" x2="{{ ax.x }}" y2="{{ ax.y }}" />
+          <text class="radar-axis-label" x="{{ ax.x }}" y="{{ ax.y }}">{{ ax.name }}</text>
+        {% endfor %}
+        {% for s in comparison.radar.series %}
+          <polygon class="radar-series" points="{{ s.points }}" style="stroke:{{ s.color }}; fill:{{ s.color }}" />
+        {% endfor %}
+      </svg>
+      <div class="radar-legend">
+        {% for s in comparison.radar.series %}<span class="legend-item"><span class="legend-dot" style="background:{{ s.color }}"></span>{{ s.display_name }}</span>{% endfor %}
+      </div>
+    </div>
+  </div>
 {% else %}
-  <div class="empty-state" style="margin-top:8px">Select two clubs above to see their head-to-head breakdown.</div>
+  <div class="empty-state cmp-empty">
+    Pin 2–4 clubs to compare them — use the <strong>+ Pin</strong> button on the
+    <a href="/clubs">clubs directory</a>, then come back here.
+    {% if pinned %}<div class="cmp-empty-note">Currently pinned: {{ pinned | length }} (need at least 2).</div>{% endif %}
+  </div>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ request.url_for('static', path='/js/pins.js') }}?v={{ asset_v }}" defer></script>
 {% endblock %}
