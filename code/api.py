@@ -2,6 +2,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Generator
+from urllib.parse import unquote
 
 import uvicorn
 from dotenv import load_dotenv
@@ -163,7 +164,10 @@ def create_app() -> FastAPI:
         # pinned set: explicit clubs param > legacy pair > the ntvs_pins cookie
         keys = _compare_keys(clubs, club_a, club_b)
         if not keys:
-            keys = [k for k in request.cookies.get("ntvs_pins", "").split(",") if k]
+            # pins.js stores the cookie via encodeURIComponent, which encodes the
+            # comma separator as %2C — decode before splitting.
+            raw_pins = unquote(request.cookies.get("ntvs_pins", ""))
+            keys = [k for k in raw_pins.split(",") if k]
         keys = keys[:4]
         options = api_clubs()["clubs"]
         comparison = fetch_with_connection(get_multi_club_comparison, keys) if len(keys) >= 2 else None

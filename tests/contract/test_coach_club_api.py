@@ -313,6 +313,27 @@ def test_compare_page_renders_with_radar(monkeypatch):
     assert "Drive Nation" in r.text
 
 
+def test_compare_page_reads_percent_encoded_pins_cookie(monkeypatch):
+    # pins.js stores the cookie via encodeURIComponent, which encodes the comma
+    # separator as %2C. The server must url-decode before splitting, otherwise it
+    # sees one bogus key and the comparison never renders. (Regression.)
+    captured = {}
+
+    def fake(func, *a, **k):
+        if getattr(func, "__name__", "") == "get_club_rankings":
+            return [{"club_key": "drive-nation", "display_name": "Drive Nation", "rank": 2, "teams_active": 2, "win_rate": 0.74, "trend_label": "Stable"}]
+        captured["keys"] = a[0] if a else None
+        return COMPARE_DATA
+
+    monkeypatch.setattr(api, "fetch_with_connection", fake)
+    client = TestClient(api.create_app())
+    client.cookies.set("ntvs_pins", "drive-nation%2Cmadfrog")
+    r = client.get("/compare")
+    assert r.status_code == 200
+    assert captured["keys"] == ["drive-nation", "madfrog"]
+    assert "Profile overlay" in r.text  # comparison rendered, not the empty state
+
+
 # ── US6: tournament schedule ───────────────────────────────────────────────
 
 SCHEDULE_DATA = {
@@ -345,6 +366,25 @@ def test_schedule_page_renders(monkeypatch):
     assert r.status_code == 200
     assert "Tournament schedule" in r.text
     assert "Lone Star Classic" in r.text
+
+
+def test_schedule_rows_link_to_results_even_when_not_completed(monkeypatch):
+    # "Details →" on not-yet-completed tournaments previously linked to "#" and
+    # opened nothing. Every row carries a tournament_id and must link to it.
+    data = {
+        **SCHEDULE_DATA,
+        "months": [{"key": "2026-03", "label": "March 2026", "calendar": [],
+                    "tournaments": [{"tournament_id": "upcoming1", "name": "Spring Open", "mo": "MAR", "day": "21",
+                                     "event_date": "2026-03-21", "venue": "Plano SP", "city": "Plano", "team_count": 96,
+                                     "age_lo": 12, "age_hi": 18, "division": "Open", "status": "Open", "within_mi": 8,
+                                     "featured": False, "completed": False}]}],
+    }
+    monkeypatch.setattr(api, "fetch_with_connection", lambda func, *a, **k: data)
+    client = TestClient(api.create_app())
+    r = client.get("/schedule")
+    assert r.status_code == 200
+    assert 'href="/results/upcoming1"' in r.text
+    assert 'class="sched-row" href="#"' not in r.text
 
 
 # ── US7: tournament results ────────────────────────────────────────────────

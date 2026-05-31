@@ -37,7 +37,7 @@
         <div class="sched-month-head"><h2>{{ mo.label }}</h2><div class="divider-line"></div></div>
         <div class="sched-list">
           {% for e in mo.tournaments %}
-            <a class="sched-row {% if e.featured %}is-featured{% endif %}" href="{% if e.completed %}/results/{{ e.tournament_id }}{% else %}#{% endif %}">
+            <a class="sched-row {% if e.featured %}is-featured{% endif %}" href="/results/{{ e.tournament_id }}">
               <div class="sched-date">
                 <span class="sched-mo">{{ e.mo }}</span>
                 <span class="sched-day {% if e.featured %}is-featured{% endif %}">{{ e.day }}</span>
@@ -71,7 +71,7 @@
           {% for week in mo.calendar %}{% for cell in week %}
             <div class="cal-cell {% if cell.events %}has-event{% endif %}">
               {% if cell.day %}<span class="cal-daynum">{{ cell.day }}</span>{% endif %}
-              {% for ev in cell.events[:2] %}<a class="cal-ev" href="{% if ev.completed %}/results/{{ ev.tournament_id }}{% else %}#{% endif %}">{{ ev.name[:14] }}</a>{% endfor %}
+              {% for ev in cell.events[:2] %}<a class="cal-ev" href="/results/{{ ev.tournament_id }}">{{ ev.name[:14] }}</a>{% endfor %}
             </div>
           {% endfor %}{% endfor %}
         </div>
