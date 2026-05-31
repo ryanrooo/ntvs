@@ -650,6 +650,79 @@ def build_schedule(rows: list[dict], filters: dict, all_months: list[str] | None
     }
 
 
+# ── Tournament results (US7) ────────────────────────────────────────────────
+
+_MEDALS = {1: "🥇", 2: "🥈", 3: "🥉"}
+
+
+def build_results(tournament: dict, placements: list[dict], bracket: list[dict],
+                  standings: list[dict], leaders: list[dict]) -> dict:
+    podium = []
+    for p in sorted(placements, key=lambda x: (x.get("placement") or 99)):
+        if p.get("placement") in (1, 2, 3):
+            podium.append({
+                "placement": p["placement"], "medal": _MEDALS.get(p["placement"], ""),
+                "team_name": p.get("team_name"), "club_key": p.get("club_key"),
+                "club_name": p.get("club_name") or p.get("team_name"),
+            })
+    podium = podium[:3]
+    champion = podium[0] if podium and podium[0]["placement"] == 1 else None
+
+    rounds_map: dict[str, list] = {}
+    seen: set = set()
+    for b in bracket:
+        mid = b.get("match_id")
+        if mid in seen:
+            continue
+        seen.add(mid)
+        rl = b.get("round_label") or "Bracket"
+        rounds_map.setdefault(rl, []).append({
+            "match_id": mid, "team_name": b.get("team_name"), "opponent_name": b.get("opponent_name"),
+            "team_won": b.get("outcome") == "Won", "score_log": b.get("score_log") or "",
+        })
+    rounds = [{"label": rl, "matches": ms} for rl, ms in rounds_map.items()]
+
+    standings_out = []
+    for i, s in enumerate(standings, start=1):
+        standings_out.append({
+            "rank": i, "team_name": s.get("team_name"), "division": s.get("division"),
+            "record": f"{int(s.get('matches_won') or 0)}–{int(s.get('matches_lost') or 0)}",
+            "point_diff": s.get("point_diff"),
+        })
+
+    scores = [{"round": r["label"], **m} for r in rounds for m in r["matches"]]
+
+    leaders_map: dict[str, list] = {"kills": [], "assists": [], "digs": []}
+    for ldr in leaders:
+        cat = ldr.get("category")
+        if cat in leaders_map:
+            leaders_map[cat].append({
+                "rank": ldr.get("rank"), "player_name": ldr.get("player_name"),
+                "club_label": ldr.get("club_label") or "", "value": ldr.get("value"),
+            })
+
+    has_bracket = bool(rounds)
+    has_standings = bool(standings_out)
+    has_leaders = any(leaders_map.values())
+    has_any = bool(podium) or has_bracket or has_standings
+    return {
+        "tournament": {"tournament_id": tournament["tournament_id"], "name": tournament["name"]},
+        "podium": podium,
+        "champion": champion,
+        "rounds": rounds,
+        "standings": standings_out,
+        "scores": scores,
+        "leaders": leaders_map,
+        "has_bracket": has_bracket,
+        "has_standings": has_standings,
+        "has_leaders": has_leaders,
+        "data_state": serialize_data_state(
+            [1] if has_any else [],
+            partial=has_any and not has_bracket,
+            message="Results loaded." if has_any else "No results recorded for this tournament yet."),
+    }
+
+
 def build_coach_profile(coach: dict, positions: list[dict], endorsements: list[dict]) -> dict:
     summary = build_endorsement_summary(endorsements)
     career = [_build_position(p) for p in positions]

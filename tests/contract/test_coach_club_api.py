@@ -345,3 +345,60 @@ def test_schedule_page_renders(monkeypatch):
     assert r.status_code == 200
     assert "Tournament schedule" in r.text
     assert "Lone Star Classic" in r.text
+
+
+# ── US7: tournament results ────────────────────────────────────────────────
+
+RESULTS_DATA = {
+    "tournament": {"tournament_id": "t1", "name": "Lone Star Classic"},
+    "podium": [
+        {"placement": 1, "medal": "🥇", "team_name": "Drive Nation 18B", "club_key": "drive-nation", "club_name": "Drive Nation"},
+        {"placement": 2, "medal": "🥈", "team_name": "Lone Star 18P", "club_key": None, "club_name": "Lone Star"},
+        {"placement": 3, "medal": "🥉", "team_name": "Skyline 18R", "club_key": None, "club_name": "Skyline"},
+    ],
+    "champion": {"placement": 1, "medal": "🥇", "team_name": "Drive Nation 18B", "club_key": "drive-nation", "club_name": "Drive Nation"},
+    "rounds": [{"label": "Final", "matches": [{"match_id": "m1", "team_name": "Drive Nation 18B", "opponent_name": "Lone Star 18P", "team_won": True, "score_log": "25-19,25-22"}]}],
+    "standings": [{"rank": 1, "team_name": "Drive Nation 18B", "division": "18 Open", "record": "6–0", "point_diff": 40}],
+    "scores": [{"round": "Final", "match_id": "m1", "team_name": "Drive Nation 18B", "opponent_name": "Lone Star 18P", "team_won": True, "score_log": "25-19,25-22"}],
+    "leaders": {"kills": [{"rank": 1, "player_name": "A. Johnson", "club_label": "Drive Nation", "value": 58}], "assists": [], "digs": []},
+    "has_bracket": True, "has_standings": True, "has_leaders": True,
+    "data_state": {"completeness": "complete", "message": "Results loaded."},
+}
+
+
+def test_api_results_returns_bundle(monkeypatch):
+    monkeypatch.setattr(api, "fetch_with_connection", lambda func, *a, **k: RESULTS_DATA)
+    client = TestClient(api.create_app())
+    r = client.get("/api/results/t1")
+    assert r.status_code == 200
+    assert r.json()["champion"]["team_name"] == "Drive Nation 18B"
+    assert len(r.json()["podium"]) == 3
+
+
+def test_api_results_404_when_missing(monkeypatch):
+    monkeypatch.setattr(api, "fetch_with_connection", lambda func, *a, **k: None)
+    client = TestClient(api.create_app())
+    assert client.get("/api/results/nope").status_code == 404
+
+
+def test_results_page_renders(monkeypatch):
+    monkeypatch.setattr(api, "fetch_with_connection", lambda func, *a, **k: RESULTS_DATA)
+    client = TestClient(api.create_app())
+    r = client.get("/results/t1")
+    assert r.status_code == 200
+    assert "Championship bracket" in r.text
+    assert "Drive Nation 18B" in r.text
+    assert "Statistical leaders" in r.text
+
+
+def test_results_page_marks_unavailable_sections(monkeypatch):
+    bare = dict(RESULTS_DATA)
+    bare.update({"podium": [], "champion": None, "rounds": [], "standings": [], "scores": [],
+                 "leaders": {"kills": [], "assists": [], "digs": []},
+                 "has_bracket": False, "has_standings": False, "has_leaders": False,
+                 "data_state": {"completeness": "empty", "message": "No results recorded for this tournament yet."}})
+    monkeypatch.setattr(api, "fetch_with_connection", lambda func, *a, **k: bare)
+    client = TestClient(api.create_app())
+    r = client.get("/results/t1")
+    assert r.status_code == 200
+    assert "unavailable" in r.text

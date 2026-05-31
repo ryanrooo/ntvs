@@ -1,0 +1,125 @@
+{% extends "layout.html" %}
+{% block title %}{{ tournament.name }} — Results — NTVS{% endblock %}
+{% block content %}
+
+<a class="back-link" href="/schedule">← Schedule</a>
+
+<div class="results-head">
+  <div>
+    <span class="kicker">Final results</span>
+    <h1 class="editor-title">{{ tournament.name }}</h1>
+  </div>
+  <div class="view-toggle" data-tabs>
+    <button type="button" class="view-btn is-active" data-tab="bracket">Bracket</button>
+    <button type="button" class="view-btn" data-tab="standings">Standings</button>
+    <button type="button" class="view-btn" data-tab="scores">All scores</button>
+  </div>
+</div>
+
+{% if podium %}
+  <div class="podium">
+    {% for p in podium %}
+      <div class="podium-card place-{{ p.placement }}">
+        <span class="podium-medal">{{ p.medal }}</span>
+        <div>
+          <div class="podium-team">{% if p.club_key %}<a href="/clubs/{{ p.club_key }}">{{ p.team_name }}</a>{% else %}{{ p.team_name }}{% endif %}</div>
+          <div class="podium-club">{{ p.club_name }}</div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<section class="tab-panel is-active" data-panel="bracket">
+  <h2 class="section-title">Championship bracket</h2>
+  {% if rounds %}
+    <div class="bracket">
+      {% for r in rounds %}
+        <div class="bracket-round">
+          <span class="label">{{ r.label }}</span>
+          {% for m in r.matches %}
+            <div class="match-cell">
+              <div class="match-team {% if m.team_won %}is-win{% endif %}"><span>{{ m.team_name }}</span></div>
+              <div class="match-team {% if not m.team_won %}is-win{% endif %}"><span>{{ m.opponent_name }}</span></div>
+              {% if m.score_log %}<div class="match-score mono">{{ m.score_log }}</div>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% endfor %}
+      {% if champion %}
+        <div class="bracket-round">
+          <span class="label">Champion</span>
+          <div class="champion-card">
+            <span class="champion-trophy">🏆</span>
+            <div class="champion-name">{{ champion.team_name }}</div>
+            <div class="champion-club">{{ champion.club_name }}</div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="empty-state">Bracket data is unavailable for this tournament.</div>
+  {% endif %}
+</section>
+
+<section class="tab-panel" data-panel="standings">
+  {% if standings %}
+    <div class="card results-table-card">
+      <table class="results-table">
+        <thead><tr><th>#</th><th>Team</th><th>Division</th><th>Record</th></tr></thead>
+        <tbody>
+          {% for s in standings %}
+            <tr>
+              <td class="rank-cell {% if s.rank <= 3 %}is-top{% endif %}">{{ s.rank }}</td>
+              <td>{{ s.team_name }}</td>
+              <td>{{ s.division }}</td>
+              <td class="mono">{{ s.record }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state">Standings are unavailable for this tournament.</div>
+  {% endif %}
+</section>
+
+<section class="tab-panel" data-panel="scores">
+  {% if scores %}
+    <div class="scores-list">
+      {% for m in scores %}
+        <div class="score-row">
+          <span class="score-team {% if m.team_won %}is-win{% endif %}">{{ m.team_name }}</span>
+          <span class="score-log mono">{{ m.score_log or '—' }}</span>
+          <span class="score-team right {% if not m.team_won %}is-win{% endif %}">{{ m.opponent_name }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">No match scores recorded.</div>
+  {% endif %}
+</section>
+
+<h2 class="section-title results-leaders-title">Statistical leaders</h2>
+{% if has_leaders %}
+  <div class="leaders-grid">
+    {% for cat, rows in [("Kills", leaders.kills), ("Assists", leaders.assists), ("Digs", leaders.digs)] %}
+      <div class="card leader-card">
+        <span class="label">{{ cat }} leaders</span>
+        {% if rows %}
+          {% for l in rows %}
+            <div class="leader-row">
+              <span class="leader-rank {% if loop.first %}is-top{% endif %}">{{ l.rank }}</span>
+              <div class="leader-id"><div class="leader-name">{{ l.player_name }}</div><div class="leader-club">{{ l.club_label }}</div></div>
+              <span class="leader-val mono">{{ l.value }}</span>
+            </div>
+          {% endfor %}
+        {% else %}<div class="leader-empty">—</div>{% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">Statistical leaders are unavailable for this tournament.</div>
+{% endif %}
+
+{% endblock %}

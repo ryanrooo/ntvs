@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "code"))
 
-from services.view_models import build_schedule
+from services.view_models import build_results, build_schedule
 
 
 def _rows():
@@ -52,3 +52,35 @@ def test_empty_schedule_reports_empty_state():
     s = build_schedule([], {}, [])
     assert s["data_state"]["completeness"] == "empty"
     assert s["counts"]["tournaments"] == 0
+
+
+# ── US7: results assembly ──────────────────────────────────────────────────
+
+def test_build_results_podium_bracket_standings_leaders():
+    placements = [
+        {"placement": 1, "team_name": "DN 18B", "club_key": "drive-nation", "club_name": "Drive Nation"},
+        {"placement": 2, "team_name": "LS 18P", "club_key": None, "club_name": "Lone Star"},
+        {"placement": 3, "team_name": "SK 18R", "club_key": None, "club_name": "Skyline"},
+    ]
+    bracket = [
+        {"match_id": "m1", "round_label": "Final", "team_name": "DN 18B", "opponent_name": "LS 18P", "outcome": "Won", "score_log": "25-19,25-22"},
+        {"match_id": "m1", "round_label": "Final", "team_name": "LS 18P", "opponent_name": "DN 18B", "outcome": "Lost", "score_log": "19-25,22-25"},
+    ]
+    standings = [{"team_name": "DN 18B", "matches_won": 6, "matches_lost": 0, "point_diff": 40, "division": "18 Open"}]
+    leaders = [{"category": "kills", "rank": 1, "player_name": "A. Johnson", "club_label": "Drive Nation", "value": 58}]
+
+    res = build_results({"tournament_id": "t1", "name": "Lone Star"}, placements, bracket, standings, leaders)
+    assert len(res["podium"]) == 3
+    assert res["champion"]["team_name"] == "DN 18B"
+    assert len(res["rounds"][0]["matches"]) == 1          # two bracket rows -> one match (deduped)
+    assert res["rounds"][0]["matches"][0]["team_won"] is True
+    assert res["standings"][0]["record"] == "6–0"
+    assert res["has_leaders"] is True and res["leaders"]["kills"][0]["value"] == 58
+    assert res["data_state"]["completeness"] == "complete"
+
+
+def test_build_results_empty_marks_unavailable():
+    res = build_results({"tournament_id": "t1", "name": "X"}, [], [], [], [])
+    assert res["has_bracket"] is False
+    assert res["has_leaders"] is False
+    assert res["data_state"]["completeness"] == "empty"

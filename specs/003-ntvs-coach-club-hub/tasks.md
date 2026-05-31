@@ -223,16 +223,16 @@ that every story builds on.
 
 ### Tests for User Story 7 ⚠️ (write first, must fail)
 
-- [ ] T065 [P] [US7] Contract test for `GET /api/results/{tournament_id}` (podium/bracket/standings/scores/leaders + `data_state`; 404; sections marked unavailable when data missing) in `tests/contract/test_coach_club_api.py`
-- [ ] T066 [P] [US7] Integration test for results assembly (podium from `bracket_placements`, bracket from `bracket_matches`, standings from `pool_standings`, scores from `match_results`, leaders from `stat_leaders`) in `tests/integration/test_schedule_queries.py`
+- [X] T065 [P] [US7] Contract test for `GET /api/results/{tournament_id}` (podium/bracket/standings/scores/leaders + `data_state`; 404; sections marked unavailable when data missing) in `tests/contract/test_coach_club_api.py`
+- [X] T066 [P] [US7] Integration test for results assembly (podium from `bracket_placements`, bracket from `bracket_matches`, standings from `pool_standings`, scores from `match_results`, leaders from `stat_leaders`) in `tests/integration/test_schedule_queries.py`
 
 ### Implementation for User Story 7
 
-- [ ] T067 [US7] Implement results assembly read in `code/services/schedule_queries.py` (podium, bracket grouped by `round_label` with winner flag, standings, all-scores, leaders; graceful "unavailable" when bracket/leaders missing)
-- [ ] T068 [US7] Add `GET /api/results/{tournament_id}` endpoint and `/results/{tournament_id}` page route with `logger.info(data_state)` in `code/api.py`
-- [ ] T069 [P] [US7] Create results template — medal podium, championship bracket (rounds left→right, winners highlighted), final standings table, all-scores list (winner highlighted), stat leaders (kills/assists/digs or "unavailable"), with bracket/standings/all-scores view switch — in `code/templates/results.html`
-- [ ] T070 [US7] Extend `code/static/js/tabs.js` for results bracket/standings/all-scores switching
-- [ ] T071 [US7] Add podium / bracket / standings / scores / leaders styles to `code/static/css/club_analytics.css`
+- [X] T067 [US7] Implement results assembly read in `code/services/schedule_queries.py` (podium, bracket grouped by `round_label` with winner flag, standings, all-scores, leaders; graceful "unavailable" when bracket/leaders missing)
+- [X] T068 [US7] Add `GET /api/results/{tournament_id}` endpoint and `/results/{tournament_id}` page route with `logger.info(data_state)` in `code/api.py`
+- [X] T069 [P] [US7] Create results template — medal podium, championship bracket (rounds left→right, winners highlighted), final standings table, all-scores list (winner highlighted), stat leaders (kills/assists/digs or "unavailable"), with bracket/standings/all-scores view switch — in `code/templates/results.html`
+- [X] T070 [US7] Extend `code/static/js/tabs.js` for results bracket/standings/all-scores switching
+- [X] T071 [US7] Add podium / bracket / standings / scores / leaders styles to `code/static/css/club_analytics.css`
 
 **Checkpoint**: Completed tournaments surface full results from stored data.
 
