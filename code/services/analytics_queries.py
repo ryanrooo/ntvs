@@ -95,7 +95,7 @@ def get_pool_results(conn, tournament_id: str | None, age_group: str | None, div
     return {"filters": {"tournament_id": tournament_id or "", "age_group": age_group or "", "division": division or "", "club_name": club_name or ""}, "pools": pools, "data_state": serialize_data_state(pools)}
 
 
-def get_club_rankings(conn, q: str | None, sort: str | None, division: str | None) -> list[dict[str, Any]]:
+def get_club_rankings(conn, q: str | None, sort: str | None, division: str | None, tier: int | None = None) -> list[dict[str, Any]]:
     with conn.cursor(cursor_factory=RealDictCursor) as cursor:
         filters = []
         params: list[Any] = []
@@ -116,6 +116,9 @@ def get_club_rankings(conn, q: str | None, sort: str | None, division: str | Non
                 """
             )
             params.append(f"%{division}%")
+        if tier:
+            filters.append("ca.tier = %s")
+            params.append(int(tier))
         query = f"""
             SELECT
                 css.club_key,
@@ -136,8 +139,10 @@ def get_club_rankings(conn, q: str | None, sort: str | None, division: str | Non
                     )
                 END AS win_rate,
                 css.ranking_score,
+                ca.tier, ca.color, ca.gold, ca.silver, ca.bronze,
                 'Stable' AS trend_label
             FROM ntvs.club_season_summary css
+            LEFT JOIN ntvs.club_attributes ca ON ca.club_key = css.club_key
             {"WHERE " + " AND ".join(filters) if filters else ""}
             ORDER BY
                 {"css.teams_active DESC, css.display_name ASC" if sort == "teams" else "win_rate DESC, css.ranking_score DESC, css.display_name ASC" if sort == "win_rate" else "css.ranking_score DESC, win_rate DESC, css.display_name ASC"}
@@ -174,6 +179,15 @@ def get_club_profile(conn, club_key: str) -> dict[str, Any]:
                 END AS win_rate,
                 css.ranking_score,
                 css.latest_activity_date,
+                ca.tier AS club_tier,
+                ca.color AS club_color,
+                ca.gold AS club_gold,
+                ca.silver AS club_silver,
+                ca.bronze AS club_bronze,
+                ca.commits AS club_commits,
+                ca.coaches_count AS club_coaches,
+                ca.est_year AS club_est,
+                ca.about AS club_about,
                 p.tournament_id,
                 tr.name AS tournament_name,
                 mr.match_id,
@@ -183,6 +197,7 @@ def get_club_profile(conn, club_key: str) -> dict[str, Any]:
                 mr.score_log
             FROM ntvs.club_team_map ctm
             JOIN ntvs.club_season_summary css ON css.club_key = ctm.club_key
+            LEFT JOIN ntvs.club_attributes ca ON ca.club_key = ctm.club_key
             LEFT JOIN (
                 SELECT
                     team_name,
@@ -310,3 +325,75 @@ def get_multi_club_comparison(conn, club_keys: list[str]) -> dict[str, Any]:
     from .view_models import build_multi_comparison
 
     return build_multi_comparison(clubs)
+
+
+def get_home_dashboard(conn) -> dict[str, Any]:
+    """Home dashboard (US8): season stats, power rankings (with tier/medals/form),
+    upcoming tournaments, featured coaches, and live matchups."""
+    rankings = get_club_rankings(conn, None, "rank", None)
+    top = rankings[:6]
+    keys = [c["club_key"] for c in top]
+    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+        cursor.execute(
+            "SELECT club_key, tier, color, gold, silver, bronze FROM ntvs.club_attributes WHERE club_key = ANY(%s)",
+            (keys,),
+        )
+        attrs = {a["club_key"]: dict(a) for a in fetch_all_dict(cursor)}
+    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+        cursor.execute(
+            """
+            SELECT
+                (SELECT count(*) FROM ntvs.club_season_summary) AS clubs,
+                (SELECT count(*) FROM ntvs.teams) AS teams,
+                (SELECT count(*) FROM ntvs.coaches) AS coaches,
+                (SELECT count(*) FROM ntvs.coaches WHERE verified) AS verified,
+                (SELECT count(*) FROM ntvs.match_results) AS matches
+            """
+        )
+        stats = dict(cursor.fetchone())
+    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+        cursor.execute(
+            """
+            SELECT ts.tournament_id, t.name, ts.event_date, ts.venue, ts.city, ts.team_count
+            FROM ntvs.tournament_schedule ts
+            JOIN ntvs.tournaments t ON t.tournament_id = ts.tournament_id
+            WHERE ts.completed = FALSE
+            ORDER BY ts.event_date ASC, t.name ASC
+            LIMIT 5
+            """
+        )
+        upcoming = fetch_all_dict(cursor)
+    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+        cursor.execute(
+            """
+            SELECT c.coach_key, c.display_name, c.role, c.club_key, c.initials, c.gradient,
+                   c.verified, c.wins, c.win_rate, c.commits,
+                   COALESCE(e.avg_rating, 0) AS rating, COALESCE(e.cnt, 0) AS endorse_count,
+                   cp.club_label, cp.club_color
+            FROM ntvs.coaches c
+            LEFT JOIN (SELECT coach_key, ROUND(AVG(stars), 1) AS avg_rating, COUNT(*) AS cnt
+                       FROM ntvs.endorsements GROUP BY coach_key) e ON e.coach_key = c.coach_key
+            LEFT JOIN LATERAL (SELECT club_label, club_color FROM ntvs.coach_positions p
+                               WHERE p.coach_key = c.coach_key
+                               ORDER BY (p.status = 'verified') DESC, p.position_id LIMIT 1) cp ON TRUE
+            WHERE c.verified
+            ORDER BY e.avg_rating DESC NULLS LAST, c.wins DESC
+            LIMIT 3
+            """
+        )
+        coaches = fetch_all_dict(cursor)
+    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+        cursor.execute(
+            """
+            SELECT mr.team_name, mr.opponent_name, mr.outcome, mr.score_log
+            FROM ntvs.match_results mr
+            WHERE mr.outcome IS NOT NULL AND mr.score_log IS NOT NULL
+            ORDER BY mr.match_id DESC
+            LIMIT 4
+            """
+        )
+        matchups = fetch_all_dict(cursor)
+
+    from .view_models import build_home_dashboard
+
+    return build_home_dashboard(top, attrs, stats, upcoming, coaches, matchups)

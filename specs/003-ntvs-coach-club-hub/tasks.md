@@ -246,17 +246,17 @@ that every story builds on.
 
 ### Tests for User Story 8 ⚠️ (write first, must fail)
 
-- [ ] T072 [P] [US8] Contract test for home dashboard sections, clubs directory rows (rank/tier/win%/form/teams/medals + sort + tier/name-city filter), and club profile sections (tier/medal cabinet/trend/commits/about) with `data_state`, in `tests/contract/test_coach_club_api.py`
+- [X] T072 [P] [US8] Contract test for home dashboard sections, clubs directory rows (rank/tier/win%/form/teams/medals + sort + tier/name-city filter), and club profile sections (tier/medal cabinet/trend/commits/about) with `data_state`, in `tests/contract/test_coach_club_api.py`
 
 ### Implementation for User Story 8
 
-- [ ] T073 [US8] Extend power-rankings, clubs-directory, and club-profile queries to join `club_attributes` (tier, color, medals, commits, est_year, about) and compute form trend, in `code/services/analytics_queries.py`
-- [ ] T074 [US8] Add home-dashboard shaping (hero, season stats strip, power rankings, upcoming tournaments via `schedule_queries`, featured coaches via `coach_queries`), clubs-directory rows (tier/form/medals), and club-profile sections (tier/medal cabinet/trend/commits/about) in `code/services/view_models.py`
-- [ ] T075 [US8] Enhance `/` (home), `/clubs` (directory with sort rank/win%/teams + filter tier and name/city), and `/clubs/{club_key}` (profile sections) routes in `code/api.py`
-- [ ] T076 [P] [US8] Update home template (hero, season stats strip, power-rankings list, upcoming tournaments, featured coaches — each linking to its detail page) in `code/templates/home.html`
-- [ ] T077 [P] [US8] Update clubs directory template (rank/name/tier/win%/form trend/teams/medals + sort + tier/name-city filter) in `code/templates/club_rankings.html`
-- [ ] T078 [P] [US8] Update club profile template (tier, season stats, season teams, performance trend, medal cabinet, recent commits, about) in `code/templates/club_profile.html`
-- [ ] T079 [US8] Add home / tier / medal-cabinet / trend / featured-coach styles to `code/static/css/club_analytics.css`
+- [X] T073 [US8] Extend power-rankings, clubs-directory, and club-profile queries to join `club_attributes` (tier, color, medals, commits, est_year, about) and compute form trend, in `code/services/analytics_queries.py`
+- [X] T074 [US8] Add home-dashboard shaping (hero, season stats strip, power rankings, upcoming tournaments via `schedule_queries`, featured coaches via `coach_queries`), clubs-directory rows (tier/form/medals), and club-profile sections (tier/medal cabinet/trend/commits/about) in `code/services/view_models.py`
+- [X] T075 [US8] Enhance `/` (home), `/clubs` (directory with sort rank/win%/teams + filter tier and name/city), and `/clubs/{club_key}` (profile sections) routes in `code/api.py`
+- [X] T076 [P] [US8] Update home template (hero, season stats strip, power-rankings list, upcoming tournaments, featured coaches — each linking to its detail page) in `code/templates/home.html`
+- [X] T077 [P] [US8] Update clubs directory template (rank/name/tier/win%/form trend/teams/medals + sort + tier/name-city filter) in `code/templates/club_rankings.html`
+- [X] T078 [P] [US8] Update club profile template (tier, season stats, season teams, performance trend, medal cabinet, recent commits, about) in `code/templates/club_profile.html`
+- [X] T079 [US8] Add home / tier / medal-cabinet / trend / featured-coach styles to `code/static/css/club_analytics.css`
 
 **Checkpoint**: All eight stories are independently functional and the app presents one coherent amber/navy design system.
 

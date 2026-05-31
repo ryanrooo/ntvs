@@ -402,3 +402,59 @@ def test_results_page_marks_unavailable_sections(monkeypatch):
     r = client.get("/results/t1")
     assert r.status_code == 200
     assert "unavailable" in r.text
+
+
+# ── US8: home dashboard + clubs/profile refresh ─────────────────────────────
+
+HOME_DATA = {
+    "stats": {"clubs": 84, "teams": 612, "coaches": 1247, "verified": 418, "matches": 9302},
+    "power_rankings": [{"rank": 1, "club_key": "drive-nation", "display_name": "Drive Nation", "win_rate": 0.8,
+                        "tier": 1, "color": "#f5c518", "gold": 8, "silver": 5, "sparkline": {"points": "0,10 90,5", "trend": "up"}}],
+    "upcoming": [{"tournament_id": "t1", "name": "Lone Star Classic", "mo": "MAR", "day": "8", "city": "Allen", "team_count": 212}],
+    "featured_coaches": [{"coach_key": "maria-alvarez", "display_name": "Maria Alvarez", "role": "Head Coach", "initials": "MA",
+                          "gradient": "g", "verified": True, "rating": 4.7, "club_key": "drive-nation", "club_label": "Drive Nation",
+                          "club_color": "#f5c518", "wins": 312, "win_rate": 0.8, "commits": 14, "endorse_count": 3}],
+    "live_matchups": [{"team_name": "DN 18B", "opponent_name": "TAV 18", "outcome": "Won", "score_log": "25-20"}],
+    "data_state": {"completeness": "complete", "message": "Dashboard loaded."},
+}
+
+CLUB_ROW = {"club_key": "drive-nation", "display_name": "Drive Nation", "source_club_name": "Drive Nation",
+            "normalization_status": "direct", "rank": 1, "teams_active": 22, "win_rate": 0.74, "trend_label": "Stable",
+            "ranking_score": 40, "tier": 1, "color": "#f5c518", "gold": 8, "silver": 5, "bronze": 7,
+            "sparkline": {"points": "0,10 90,5", "trend": "up"}}
+
+CLUB_PROFILE = {
+    "club": {"club_key": "drive-nation", "display_name": "Drive Nation", "source_club_name": "Drive Nation",
+             "normalization_status": "direct", "teams_active": 22, "win_rate": 0.74, "ranking_score": 40,
+             "latest_activity_date": None, "tier": 1, "color": "#f5c518", "gold": 8, "silver": 5, "bronze": 7,
+             "commits": 41, "coaches": 12, "est_year": 2012, "about": "Frisco powerhouse."},
+    "teams": [{"team_name": "Drive Nation 18 Black", "division": "18 Open", "matches_won": 31, "matches_lost": 6, "tournaments": []}],
+    "team_seasons": {}, "placements": [], "champions": [], "recent_tournaments": [], "recent_matchups": [], "recent_bracket_matchups": [],
+}
+
+
+def test_home_dashboard_renders_sections(monkeypatch):
+    monkeypatch.setattr(api, "fetch_with_connection", lambda func, *a, **k: HOME_DATA)
+    client = TestClient(api.create_app())
+    r = client.get("/")
+    assert r.status_code == 200
+    for section in ["Power Rankings", "Upcoming tournaments", "Featured coaches", "Clubs tracked"]:
+        assert section in r.text
+
+
+def test_clubs_directory_shows_tier_and_medals(monkeypatch):
+    monkeypatch.setattr(api, "fetch_with_connection", lambda func, *a, **k: [CLUB_ROW])
+    client = TestClient(api.create_app())
+    r = client.get("/clubs")
+    assert r.status_code == 200
+    assert "North Texas clubs" in r.text
+    assert "T1" in r.text  # tier pill
+
+
+def test_club_profile_shows_medal_cabinet(monkeypatch):
+    monkeypatch.setattr(api, "fetch_with_connection", lambda func, *a, **k: CLUB_PROFILE)
+    client = TestClient(api.create_app())
+    r = client.get("/clubs/drive-nation")
+    assert r.status_code == 200
+    assert "Medal cabinet" in r.text
+    assert "About" in r.text

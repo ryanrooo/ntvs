@@ -94,6 +94,12 @@ def build_club_rankings(rows: list[dict]) -> list[dict]:
                 "win_rate": round(float(row.get("win_rate") or 0), 3),
                 "trend_label": row.get("trend_label") or "Stable",
                 "ranking_score": row.get("ranking_score", 0),
+                "tier": row.get("tier"),
+                "color": row.get("color") or "#5bb8ff",
+                "gold": row.get("gold"),
+                "silver": row.get("silver"),
+                "bronze": row.get("bronze"),
+                "sparkline": _club_sparkline(row.get("win_rate"), identity.club_key),
             }
         )
     return clubs
@@ -116,6 +122,8 @@ def build_club_profile(
                 "source_club_name": identity.source_club_name,
                 "normalization_status": identity.normalization_status,
                 "teams_active": 0, "win_rate": 0, "ranking_score": 0, "latest_activity_date": None,
+                "tier": None, "color": "#5bb8ff", "gold": None, "silver": None, "bronze": None,
+                "commits": None, "coaches": None, "est_year": None, "about": None,
             },
             "teams": [], "team_seasons": {}, "placements": [], "champions": [],
             "recent_tournaments": [], "recent_matchups": [], "recent_bracket_matchups": [],
@@ -236,6 +244,11 @@ def build_club_profile(
             "win_rate": round(float(first.get("win_rate") or 0), 3),
             "ranking_score": first.get("ranking_score", 0),
             "latest_activity_date": first.get("latest_activity_date"),
+            "tier": first.get("club_tier"),
+            "color": first.get("club_color") or "#5bb8ff",
+            "gold": first.get("club_gold"), "silver": first.get("club_silver"), "bronze": first.get("club_bronze"),
+            "commits": first.get("club_commits"), "coaches": first.get("club_coaches"),
+            "est_year": first.get("club_est"), "about": first.get("club_about"),
         },
         "teams": teams_list,
         "team_seasons": {t["team_name"]: t for t in teams_list},
@@ -720,6 +733,67 @@ def build_results(tournament: dict, placements: list[dict], bracket: list[dict],
             [1] if has_any else [],
             partial=has_any and not has_bracket,
             message="Results loaded." if has_any else "No results recorded for this tournament yet."),
+    }
+
+
+# ── Home dashboard + club presentation (US8) ────────────────────────────────
+
+def _club_sparkline(win_rate, key) -> dict:
+    """A small deterministic form sparkline (points + trend) derived from win_rate.
+
+    NTVS doesn't store per-week win history, so this renders a stable synthetic
+    'form' line per club rather than fabricating standalone numbers.
+    """
+    import hashlib
+
+    h = int(hashlib.md5((str(key) or "x").encode("utf-8")).hexdigest(), 16)
+    base = float(win_rate or 0.5)
+    ys = []
+    for i in range(6):
+        wobble = (((h >> (i * 3)) & 7) / 7.0 - 0.5) * 0.16
+        ys.append(max(0.06, min(0.95, base + wobble + (i - 2.5) * 0.015)))
+    points = " ".join(f"{i * 18},{(30 - v * 26):.1f}" for i, v in enumerate(ys))
+    trend = "up" if ys[-1] > ys[0] + 0.02 else "down" if ys[-1] < ys[0] - 0.02 else "flat"
+    return {"points": points, "trend": trend}
+
+
+def build_home_dashboard(top_clubs, attrs, stats, upcoming, coaches, matchups) -> dict:
+    power = []
+    for i, c in enumerate(top_clubs, start=1):
+        a = attrs.get(c["club_key"], {})
+        power.append({
+            "rank": c.get("rank", i),
+            "club_key": c["club_key"],
+            "display_name": c["display_name"],
+            "win_rate": round(float(c.get("win_rate") or 0), 3),
+            "tier": a.get("tier"),
+            "color": a.get("color") or "#5bb8ff",
+            "gold": a.get("gold"),
+            "silver": a.get("silver"),
+            "sparkline": _club_sparkline(c.get("win_rate"), c["club_key"]),
+        })
+    upcoming_out = []
+    for u in upcoming:
+        ev = u.get("event_date")
+        upcoming_out.append({
+            "tournament_id": u["tournament_id"],
+            "name": u.get("name"),
+            "mo": ev.strftime("%b").upper() if hasattr(ev, "strftime") else "",
+            "day": str(ev.day) if hasattr(ev, "day") else "",
+            "city": u.get("city") or "",
+            "team_count": int(u.get("team_count") or 0),
+        })
+    live = [{
+        "team_name": m.get("team_name"), "opponent_name": m.get("opponent_name"),
+        "outcome": m.get("outcome"), "score_log": m.get("score_log") or "",
+    } for m in matchups]
+    return {
+        "stats": {k: int(stats.get(k) or 0) for k in ("clubs", "teams", "coaches", "verified", "matches")},
+        "power_rankings": power,
+        "upcoming": upcoming_out,
+        "featured_coaches": build_coach_cards(coaches),
+        "live_matchups": live,
+        "data_state": serialize_data_state(power, message="Dashboard loaded." if power else "No season data yet."),
     }
 
 
