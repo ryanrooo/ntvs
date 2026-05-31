@@ -9,21 +9,29 @@ import api
 
 
 def test_home_page_renders_with_stubbed_data(monkeypatch):
+    # US8 rebuilt the home page as a dashboard backed by get_home_dashboard.
     monkeypatch.setattr(
         api,
         "fetch_with_connection",
         lambda func, *args, **kwargs: {
-            "featured_tournament": {"tournament_id": "t1", "name": "Lone Star Classic"},
-            "featured_pools": [{"pool_id": "p1", "pool_name": "Pool A", "division": "17 Open", "tournament_id": "t1"}],
-            "featured_clubs": [{"club_key": "drive-nation", "display_name": "Drive Nation", "rank": 1, "teams_active": 2, "win_rate": 0.8}],
-            "featured_matchups": [],
-            "tournaments": [{"tournament_id": "t1", "name": "Lone Star Classic"}],
+            "stats": {"clubs": 84, "teams": 612, "coaches": 1247, "verified": 418, "matches": 9302},
+            "power_rankings": [{"rank": 1, "club_key": "drive-nation", "display_name": "Drive Nation",
+                                "win_rate": 0.8, "tier": 1, "color": "#f5c518", "gold": 8, "silver": 5,
+                                "sparkline": {"points": "0,10 90,5", "trend": "up"}}],
+            "upcoming": [{"tournament_id": "t1", "name": "Lone Star Classic", "mo": "MAR", "day": "8", "city": "Allen", "team_count": 212}],
+            "featured_coaches": [{"coach_key": "maria-alvarez", "display_name": "Maria Alvarez", "role": "Head Coach",
+                                  "initials": "MA", "gradient": "linear-gradient(135deg,#f5c518,#ff8a3d)", "verified": True,
+                                  "rating": 4.7, "club_key": "drive-nation", "club_label": "Drive Nation",
+                                  "club_color": "#f5c518", "wins": 312, "win_rate": 0.8, "commits": 14, "endorse_count": 3}],
+            "live_matchups": [{"team_name": "Drive Nation 18B", "opponent_name": "TAV 18", "outcome": "Won", "score_log": "25-20"}],
+            "data_state": {"completeness": "complete", "message": "Dashboard loaded."},
         },
     )
     client = TestClient(api.create_app())
     response = client.get("/")
     assert response.status_code == 200
-    assert "Lone Star Classic" in response.text
+    assert "Power Rankings" in response.text
+    assert "Drive Nation" in response.text
 
 
 def test_pool_results_api_returns_json(monkeypatch):
@@ -116,6 +124,10 @@ def test_club_profile_api_returns_alias_metadata(monkeypatch):
 
 def test_all_primary_pages_render_without_placeholder_copy(monkeypatch):
     def fake_fetch(func, *args, **kwargs):
+        if func.__name__ == "get_home_dashboard":
+            return {"stats": {"clubs": 1, "teams": 1, "coaches": 1, "verified": 0, "matches": 1},
+                    "power_rankings": [], "upcoming": [], "featured_coaches": [], "live_matchups": [],
+                    "data_state": {"completeness": "complete", "message": "ok"}}
         if func.__name__ == "get_homepage_data" or func.__name__ == "get_tournaments":
             return {
                 "featured_tournament": {"tournament_id": "t1", "name": "Lone Star Classic"},

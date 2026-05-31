@@ -1,161 +1,90 @@
 {% extends "layout.html" %}
-{% block title %}NTVS — North Texas Volleyball{% endblock %}
+{% block title %}NTVS — North Texas Volleyball Stats{% endblock %}
 {% block content %}
 
-{# ── Hero ─────────────────────────────────────────────────── #}
-<section class="hero">
-  <div class="hero-copy">
-    <span class="eyebrow">North Texas Region 24</span>
-    <h1>{{ featured_tournament.name if featured_tournament else "Club Analytics" }}</h1>
-    <p>
-      Live tournament results, pool standings, and club performance
-      data for the North Texas volleyball region.
-    </p>
+<section class="home-hero">
+  <div class="hero-main">
+    <span class="kicker"><span class="live-dot"></span> Live · 2025–26 Club Season · Region 9</span>
+    <h1 class="hero-title">Every set, every spike, <span class="accent">tracked across North Texas.</span></h1>
+    <p class="hero-sub">The independent stats hub for club volleyball from Denton to Plano — compare programs, follow tournaments, scout coaches.</p>
     <div class="hero-actions">
-      <a class="button-primary" href="/pool-results{% if featured_tournament %}?tournament_id={{ featured_tournament.tournament_id }}{% endif %}">
-        Pool Results
-      </a>
-      <a class="button-secondary" href="/clubs">Browse Clubs</a>
+      <a class="btn btn-primary" href="/compare">Compare clubs</a>
+      <a class="btn" href="/schedule">Browse tournaments</a>
     </div>
   </div>
-  <div class="hero-card">
-    <h2>Active Pools</h2>
-    {% if featured_pools %}
-      <div style="display:grid;gap:4px">
-        {% for pool in featured_pools %}
-          <a href="/pool-results{% if featured_tournament %}?tournament_id={{ featured_tournament.tournament_id }}{% endif %}"
-             style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:6px;background:var(--card-3);border:1px solid var(--border);transition:border-color 0.12s"
-             onmouseover="this.style.borderColor='var(--border-mid)'" onmouseout="this.style.borderColor='var(--border)'">
-            <span style="font-size:0.84rem;font-weight:700;color:var(--text)">{{ pool.pool_name }}</span>
-            <span class="div-badge">{{ pool.division }}</span>
-          </a>
-        {% endfor %}
-      </div>
+  <div class="card live-card">
+    <span class="label">Live now</span>
+    {% if live_matchups %}
+      {% for m in live_matchups %}
+        <div class="live-row">
+          <span class="live-team {% if m.outcome == 'Won' %}is-win{% endif %}">{{ m.team_name }}</span>
+          <span class="live-score mono">{{ m.score_log or '–' }}</span>
+          <span class="live-team right {% if m.outcome == 'Lost' %}is-win{% endif %}">{{ m.opponent_name }}</span>
+        </div>
+      {% endfor %}
     {% else %}
-      <p style="color:var(--muted);font-size:0.875rem">{{ data_state.message }}</p>
+      <div class="empty-state">No live matches right now.</div>
     {% endif %}
   </div>
 </section>
 
-{# ── Tournament selector ──────────────────────────────────── #}
-<section class="filters-bar" style="margin-top:24px">
-  <form action="/" method="get" class="filter-grid">
-    <label>Tournament
-      <select name="tournament_id">
-        <option value="">Latest available</option>
-        {% for t in tournaments %}
-          <option value="{{ t.tournament_id }}"
-            {% if featured_tournament and t.tournament_id == featured_tournament.tournament_id %}selected{% endif %}>
-            {{ t.name }}
-          </option>
-        {% endfor %}
-      </select>
-    </label>
-    <button type="submit">Load</button>
-  </form>
+<section class="stats-strip">
+  <div class="stat-box"><span class="stat-num">{{ "{:,}".format(stats.clubs) }}</span><span class="stat-lbl">Clubs tracked</span></div>
+  <div class="stat-box"><span class="stat-num">{{ "{:,}".format(stats.teams) }}</span><span class="stat-lbl">Active teams</span></div>
+  <div class="stat-box"><span class="stat-num">{{ "{:,}".format(stats.coaches) }}</span><span class="stat-lbl">Coach profiles</span><span class="stat-foot">{{ stats.verified }} verified</span></div>
+  <div class="stat-box"><span class="stat-num">{{ "{:,}".format(stats.matches) }}</span><span class="stat-lbl">Matches logged</span></div>
 </section>
 
-{# ── Two columns ──────────────────────────────────────────── #}
-<div class="section-grid" style="margin-top:4px">
-
-  {# Club Leaders #}
-  <div class="card" style="padding:0;overflow:hidden">
-    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-      <h2 style="font-size:0.9rem">Club Leaders</h2>
-      <a href="/clubs" style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent)">All Rankings &rarr;</a>
-    </div>
-    <div style="padding:16px">
-      {% if featured_clubs %}
-        <ul class="leaderboard">
-          {% for club in featured_clubs %}
-            <li>
-              <span class="rank {{ 'rank-1' if loop.index == 1 else 'rank-2' if loop.index == 2 else 'rank-3' if loop.index == 3 else '' }}">
-                {{ club.rank }}
-              </span>
-              <div>
-                <a href="/clubs/{{ club.club_key }}" class="leader-name">{{ club.display_name }}</a>
-                <div class="leader-sub">{{ club.teams_active }} teams &bull; Score {{ club.ranking_score|int }}</div>
-              </div>
-              <div class="leader-right">
-                <div class="leader-pct">{{ "%.1f"|format(club.win_rate * 100) }}%</div>
-                <div class="wr-bar">
-                  <div class="wr-fill" style="width:{{ "%.0f"|format(club.win_rate * 100) }}%"></div>
-                </div>
-              </div>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <div class="empty-state" style="margin-top:0">No club data yet.</div>
-      {% endif %}
-    </div>
+<div class="home-grid">
+  <div class="card">
+    <div class="section-head"><h2 class="section-title">Power Rankings</h2><a href="/clubs">All rankings →</a></div>
+    {% if power_rankings %}
+      <div class="power-list">
+        {% for c in power_rankings %}
+          <a class="power-row" href="/clubs/{{ c.club_key }}">
+            <span class="power-rank">{{ c.rank }}</span>
+            <span class="power-name">{{ c.display_name }}{% if c.tier %}<span class="tier tier-{{ c.tier }}">T{{ c.tier }}</span>{% endif %}</span>
+            <span class="power-pct">{{ "%.0f"|format(c.win_rate * 100) }}%</span>
+            <span class="power-bar"><span class="power-fill" style="width:{{ "%.0f"|format(c.win_rate * 100) }}%;background:{{ c.color }}"></span></span>
+            {% if c.sparkline %}<svg class="spark spark-{{ c.sparkline.trend }}" viewBox="0 0 90 32" preserveAspectRatio="none"><polyline points="{{ c.sparkline.points }}" /></svg>{% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">No rankings yet.</div>
+    {% endif %}
   </div>
 
-  {# Pool Snapshot #}
-  <div class="card" style="padding:0;overflow:hidden">
-    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-      <h2 style="font-size:0.9rem">Pool Snapshot</h2>
-      {% if featured_tournament %}
-        <a href="/pool-results?tournament_id={{ featured_tournament.tournament_id }}"
-           style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent)">
-          View All &rarr;
+  <div class="card">
+    <div class="section-head"><h2 class="section-title">Upcoming tournaments</h2><a href="/schedule">Schedule →</a></div>
+    {% if upcoming %}
+      <div class="upcoming-list">
+        {% for u in upcoming %}
+          <a class="upcoming-row" href="{% if u.tournament_id %}/results/{{ u.tournament_id }}{% else %}/schedule{% endif %}">
+            <span class="upcoming-date"><span class="upcoming-mo">{{ u.mo }}</span><span class="upcoming-day">{{ u.day }}</span></span>
+            <span class="upcoming-info"><span class="upcoming-name">{{ u.name }}</span><span class="upcoming-meta">{{ u.city }} · {{ u.team_count }} teams</span></span>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">No upcoming tournaments.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% if featured_coaches %}
+  <div class="card">
+    <div class="section-head"><h2 class="section-title">Featured coaches</h2><a href="/coaches">All coaches →</a></div>
+    <div class="featured-coaches">
+      {% for c in featured_coaches %}
+        <a class="featured-coach" href="/coaches/{{ c.coach_key }}">
+          <span class="avatar" style="background:{{ c.gradient }}">{{ c.initials }}</span>
+          <div class="fc-id"><span class="fc-name">{{ c.display_name }}{% if c.verified %}<span class="verified-dot">✔</span>{% endif %}</span><span class="fc-role">{{ c.role }}</span></div>
+          <span class="fc-rating">{{ "%.1f"|format(c.rating) }}★</span>
         </a>
-      {% endif %}
-    </div>
-    <div style="padding:16px">
-      {% if featured_pools %}
-        <div style="display:grid;gap:3px">
-          {% for pool in featured_pools %}
-            <a href="/pool-results{% if featured_tournament %}?tournament_id={{ featured_tournament.tournament_id }}{% endif %}"
-               style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-radius:6px;border:1px solid transparent;background:var(--surface);transition:all 0.12s"
-               onmouseover="this.style.background='var(--card-2)';this.style.borderColor='var(--border)'"
-               onmouseout="this.style.background='var(--surface)';this.style.borderColor='transparent'">
-              <span style="font-weight:700;font-size:0.875rem;color:var(--text)">{{ pool.pool_name }}</span>
-              <span class="div-badge">{{ pool.division }}</span>
-            </a>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="empty-state" style="margin-top:0">{{ data_state.message }}</div>
-      {% endif %}
+      {% endfor %}
     </div>
   </div>
-
-</div>
-
-{# ── Recent Matchups ──────────────────────────────────────── #}
-<div class="card" style="padding:0;overflow:hidden">
-  <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-    <h2 style="font-size:0.9rem">Recent Matchups</h2>
-    <a href="/compare" style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent)">Compare Clubs &rarr;</a>
-  </div>
-  {% if featured_matchups %}
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>Team</th><th>vs Opponent</th><th>Result</th><th>Score</th></tr>
-        </thead>
-        <tbody>
-          {% for m in featured_matchups %}
-            <tr>
-              <td><span class="fw">{{ m.team_name }}</span></td>
-              <td>{{ m.opponent_name }}</td>
-              <td>
-                {% if m.outcome == 'Won' %}<span class="badge badge-win">W</span>
-                {% elif m.outcome == 'Lost' %}<span class="badge badge-loss">L</span>
-                {% else %}<span style="color:var(--muted)">—</span>{% endif %}
-              </td>
-              <td class="score-cell">{{ m.score_log or "—" }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  {% else %}
-    <div style="padding:24px">
-      <div class="empty-state">No matchup data available for the selected tournament.</div>
-    </div>
-  {% endif %}
-</div>
+{% endif %}
 
 {% endblock %}

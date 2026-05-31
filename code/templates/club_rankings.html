@@ -1,72 +1,66 @@
 {% extends "layout.html" %}
-{% block title %}Club Rankings — NTVS{% endblock %}
+{% block title %}Clubs — NTVS{% endblock %}
 {% block content %}
 
-<div class="page-head">
-  <span class="eyebrow">Region 24</span>
-  <h1>Club Rankings</h1>
-  <p>Search and rank clubs by overall score, team count, or win rate across all recorded tournaments.</p>
-</div>
-
-<div class="cmp-cta-row">
+<div class="dir-head">
+  <div class="dir-title">
+    <span class="kicker">Directory · {{ clubs | length }} clubs</span>
+    <h1>North Texas clubs</h1>
+  </div>
   <a class="btn btn-primary" href="/compare">Compare pinned (<span data-pin-count>0</span>)</a>
 </div>
 
-<section class="filters-bar">
-  <form action="/clubs" method="get" class="filter-grid">
-    <label>Search
-      <input type="text" name="q" value="{{ query.q }}" placeholder="Club name…" />
-    </label>
-    <label>Sort by
-      <select name="sort">
-        <option value="rank"     {% if query.sort == 'rank'     %}selected{% endif %}>Overall Rank</option>
-        <option value="teams"    {% if query.sort == 'teams'    %}selected{% endif %}>Total Teams</option>
-        <option value="win_rate" {% if query.sort == 'win_rate' %}selected{% endif %}>Win Rate</option>
-      </select>
-    </label>
-    <label>Division
-      <input type="text" name="division" value="{{ query.division }}" placeholder="e.g. 14A" />
-    </label>
-    <button type="submit">Apply</button>
-  </form>
-</section>
+<form action="/clubs" method="get" class="club-toolbar">
+  <label class="coach-search">
+    <span class="ic">⌕</span>
+    <input type="text" name="q" value="{{ query.q }}" placeholder="Search clubs…" />
+  </label>
+  <input type="hidden" name="sort" value="{{ query.sort }}" />
+  <div class="tier-pills">
+    <a class="tier-pill {% if not query.tier %}is-on{% endif %}" href="/clubs?sort={{ query.sort }}{% if query.q %}&q={{ query.q }}{% endif %}">All tiers</a>
+    {% for t in [1, 2, 3] %}
+      <a class="tier-pill {% if query.tier == t %}is-on{% endif %}" href="/clubs?tier={{ t }}&sort={{ query.sort }}{% if query.q %}&q={{ query.q }}{% endif %}">Tier {{ t }}</a>
+    {% endfor %}
+  </div>
+  <div class="sort-pills">
+    <span class="sort-label">Sort</span>
+    {% for key, lbl in [("rank", "Rank"), ("win_rate", "Win %"), ("teams", "Teams")] %}
+      <a class="sort-pill {% if query.sort == key %}is-on{% endif %}" href="/clubs?sort={{ key }}{% if query.tier %}&tier={{ query.tier }}{% endif %}{% if query.q %}&q={{ query.q }}{% endif %}">{{ lbl }}</a>
+    {% endfor %}
+  </div>
+</form>
 
 {% if clubs %}
   <div class="card" style="padding:0;overflow:hidden">
     <div class="table-wrap">
-      <table>
+      <table class="clubs-table">
         <thead>
           <tr>
-            <th style="width:60px">Rank</th>
+            <th style="width:64px">Rank</th>
             <th>Club</th>
+            <th>Win %</th>
+            <th>Form</th>
             <th>Teams</th>
-            <th>Win Rate</th>
-            <th>Score</th>
+            <th>Medals</th>
             <th style="width:96px"></th>
           </tr>
         </thead>
         <tbody>
           {% for club in clubs %}
             <tr>
+              <td><span class="rank-num">#{{ club.rank }}</span></td>
               <td>
-                <span class="rank-num">{{ club.rank }}</span>
-              </td>
-              <td>
-                <a href="/clubs/{{ club.club_key }}" class="club-link">{{ club.display_name }}</a>
-              </td>
-              <td style="color:var(--text-2)">{{ club.teams_active }}</td>
-              <td>
-                <div class="wr-inline">
-                  <span class="wr-pct">{{ "%.1f"|format(club.win_rate * 100) }}%</span>
-                  <div class="wr-bar">
-                    <div class="wr-fill" style="width:{{ "%.0f"|format(club.win_rate * 100) }}%"></div>
-                  </div>
+                <div class="club-cell">
+                  <span class="avatar club-avatar" style="background:{{ club.color }}">{{ club.display_name[:2] | upper }}</span>
+                  <a href="/clubs/{{ club.club_key }}" class="club-link">{{ club.display_name }}</a>
+                  {% if club.tier %}<span class="tier tier-{{ club.tier }}">T{{ club.tier }}</span>{% endif %}
                 </div>
               </td>
-              <td>
-                <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--muted)">
-                  {{ club.ranking_score|int }}
-                </span>
+              <td><span class="wr-pct">{{ "%.0f"|format(club.win_rate * 100) }}%</span></td>
+              <td>{% if club.sparkline %}<svg class="spark spark-{{ club.sparkline.trend }}" viewBox="0 0 90 32" preserveAspectRatio="none"><polyline points="{{ club.sparkline.points }}" /></svg>{% endif %}</td>
+              <td style="color:var(--text-2)">{{ club.teams_active }}</td>
+              <td class="medals-cell">
+                {% if club.gold is not none %}🥇 {{ club.gold }}{% if club.silver is not none %} 🥈 {{ club.silver }}{% endif %}{% else %}<span class="muted-dash">—</span>{% endif %}
               </td>
               <td><button type="button" class="pin-btn" data-pin="{{ club.club_key }}">+ Pin</button></td>
             </tr>

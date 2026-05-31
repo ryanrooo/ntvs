@@ -95,11 +95,9 @@ def test_get_club_rankings_returns_ranked_rows():
 
 
 def test_get_club_comparison_reports_missing_head_to_head():
-    conn = FakeConnection([
-        [],
-        [],
-        [],
-    ])
+    # get_club_profile issues 3 cursors each (main/bracket/placement); compare runs
+    # it for both clubs + 1 head-to-head query = 7 cursor calls.
+    conn = FakeConnection([[], [], [], [], [], [], []])
     comparison = get_club_comparison(conn, "drive-nation", "madfrog")
     assert comparison["head_to_head"]["available"] is False
     assert comparison["data_state"]["completeness"] == "partial"
@@ -131,7 +129,9 @@ def test_get_club_profile_shapes_team_and_tournament_data():
                 "outcome": "Won",
                 "score_log": "25-18,25-20",
             }
-        ]
+        ],
+        [],  # bracket_matches cursor
+        [],  # bracket_placements cursor
     ])
     profile = get_club_profile(conn, "drive-nation")
     assert profile["club"]["club_key"] == "drive-nation"

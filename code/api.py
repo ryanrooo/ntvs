@@ -15,6 +15,7 @@ from services.analytics_queries import (
     get_club_comparison,
     get_club_profile,
     get_club_rankings,
+    get_home_dashboard,
     get_homepage_data,
     get_multi_club_comparison,
     get_pool_results,
@@ -91,10 +92,10 @@ def create_app() -> FastAPI:
         return data
 
     @app.get("/api/clubs")
-    def api_clubs(q: str | None = None, sort: str = "rank", division: str | None = None):
-        clubs = fetch_with_connection(get_club_rankings, q, sort, division)
+    def api_clubs(q: str | None = None, sort: str = "rank", division: str | None = None, tier: int | None = None):
+        clubs = fetch_with_connection(get_club_rankings, q, sort, division, tier)
         state = serialize_data_state(clubs)
-        logger.info("api_clubs q=%s sort=%s division=%s state=%s", q, sort, division, state["completeness"])
+        logger.info("api_clubs q=%s sort=%s division=%s tier=%s state=%s", q, sort, division, tier, state["completeness"])
         return {"clubs": clubs, "data_state": state}
 
     def _compare_keys(clubs, club_a, club_b):
@@ -116,17 +117,18 @@ def create_app() -> FastAPI:
     @app.get("/api/clubs/{club_key}")
     def api_club_profile(club_key: str):
         profile = fetch_with_connection(get_club_profile, club_key)
-        if not profile["teams"]:
+        if not profile.get("teams"):
             raise HTTPException(status_code=404, detail="Club not found")
-        has_data = bool(profile["recent_matchups"]) or bool(profile["recent_bracket_matchups"])
+        has_data = bool(profile.get("recent_matchups")) or bool(profile.get("recent_bracket_matchups"))
         state = serialize_data_state(profile["teams"], partial=not has_data)
         logger.info("api_club_profile club_key=%s state=%s", club_key, state["completeness"])
         profile["data_state"] = state
         return profile
 
     @app.get("/", response_class=HTMLResponse)
-    def home_page(request: Request, tournament_id: str | None = None):
-        data = api_home(tournament_id)
+    def home_page(request: Request):
+        data = fetch_with_connection(get_home_dashboard)
+        logger.info("home_page state=%s", data["data_state"]["completeness"])
         return templates.TemplateResponse("home.html", {"request": request, **data})
 
     @app.get("/pool-results", response_class=HTMLResponse)
@@ -141,9 +143,9 @@ def create_app() -> FastAPI:
         return templates.TemplateResponse("saturday_pool_results.html", {"request": request, **data})
 
     @app.get("/clubs", response_class=HTMLResponse)
-    def clubs_page(request: Request, q: str | None = None, sort: str = "rank", division: str | None = None):
-        data = api_clubs(q, sort, division)
-        data["query"] = {"q": q or "", "sort": sort, "division": division or ""}
+    def clubs_page(request: Request, q: str | None = None, sort: str = "rank", division: str | None = None, tier: int | None = None):
+        data = api_clubs(q, sort, division, tier)
+        data["query"] = {"q": q or "", "sort": sort, "division": division or "", "tier": tier or ""}
         return templates.TemplateResponse("club_rankings.html", {"request": request, **data})
 
     @app.get("/clubs/{club_key}", response_class=HTMLResponse)

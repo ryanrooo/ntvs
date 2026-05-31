@@ -2,44 +2,18 @@
 {% block title %}{{ club.display_name }} — NTVS{% endblock %}
 {% block content %}
 
-{# ── Hero ─────────────────────────────────────────────────── #}
-<section class="hero compact">
-  <div class="hero-copy">
-    <span class="eyebrow">Club Profile</span>
-    <h1>{{ club.display_name }}</h1>
-    {% if selected_team_data %}
-      <p>
-        {{ selected_team_data.team_name }}
-        &bull; Division {{ selected_team_data.division }}
-        &bull; {{ selected_team_data.matches_won }}W – {{ selected_team_data.matches_lost }}L pool record
-      </p>
-    {% else %}
-      <p>
-        {{ club.teams_active }} active teams
-        &bull; {{ "%.1f"|format(club.win_rate * 100) }}% win rate
-        &bull; {{ club.ranking_score|int }} ranking score
-      </p>
-    {% endif %}
+{# ── Header ───────────────────────────────────────────────── #}
+<a class="back-link" href="/clubs">← Clubs</a>
+<header class="club-head">
+  <span class="avatar avatar-lg" style="background:{{ club.color }}">{{ club.display_name[:2] | upper }}</span>
+  <div class="club-head-id">
+    <h1 class="club-title">{{ club.display_name }}{% if club.tier %}<span class="tier tier-{{ club.tier }}">Tier {{ club.tier }}</span>{% endif %}</h1>
+    <p class="club-sub">
+      {% if club.est_year %}Est. {{ club.est_year }} · {% endif %}{{ club.teams_active }} teams · {{ "%.0f"|format(club.win_rate * 100) }}% win rate
+    </p>
   </div>
-  <div class="hero-card">
-    <h2>Titles</h2>
-    {% if champions %}
-      <div style="display:grid;gap:6px">
-        {% for p in champions[:5] %}
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--card-3);border:1px solid var(--border);border-radius:6px">
-            <span style="font-size:0.82rem;font-weight:700;color:var(--text)">{{ p.bracket_tier }}</span>
-            <span style="font-size:0.74rem;color:var(--muted)">{{ p.tournament_name }} · Div {{ p.division }}</span>
-          </div>
-        {% endfor %}
-        {% if champions|length > 5 %}
-          <div style="padding:6px 12px;font-size:0.77rem;color:var(--muted)">+{{ champions|length - 5 }} more</div>
-        {% endif %}
-      </div>
-    {% else %}
-      <p style="color:var(--muted);font-size:0.875rem">No titles recorded yet.</p>
-    {% endif %}
-  </div>
-</section>
+  <button type="button" class="pin-btn pin-btn-lg" data-pin="{{ club.club_key }}">+ Pin</button>
+</header>
 
 {# ── Team Selector ────────────────────────────────────────── #}
 {% if teams %}
@@ -166,23 +140,29 @@
 {% else %}
 
   <div class="stats-strip" style="margin-top:24px">
-    <div class="stat-cell">
-      <div class="stat-val neutral">{{ club.teams_active }}</div>
-      <div class="stat-lbl">Teams Active</div>
-    </div>
-    <div class="stat-cell">
-      <div class="stat-val">{{ "%.0f"|format(club.win_rate * 100) }}%</div>
-      <div class="stat-lbl">Win Rate</div>
-    </div>
-    <div class="stat-cell">
-      <div class="stat-val neutral">{{ club.ranking_score|int }}</div>
-      <div class="stat-lbl">Ranking Score</div>
-    </div>
-    <div class="stat-cell">
-      <div class="stat-val">{{ champions|length }}</div>
-      <div class="stat-lbl">Titles</div>
-    </div>
+    <div class="stat-box"><span class="stat-num">{{ club.teams_active }}</span><span class="stat-lbl">Teams</span></div>
+    <div class="stat-box"><span class="stat-num">{{ "%.0f"|format(club.win_rate * 100) }}%</span><span class="stat-lbl">Win rate</span></div>
+    <div class="stat-box"><span class="stat-num">{% if club.gold is not none %}{{ club.gold }}{% else %}—{% endif %}</span><span class="stat-lbl">Gold medals</span></div>
+    <div class="stat-box"><span class="stat-num">{% if club.commits is not none %}{{ club.commits }}{% else %}—{% endif %}</span><span class="stat-lbl">College commits</span></div>
+    <div class="stat-box"><span class="stat-num">{% if club.coaches is not none %}{{ club.coaches }}{% else %}{{ champions | length }}{% endif %}</span><span class="stat-lbl">{% if club.coaches is not none %}Coaches{% else %}Titles{% endif %}</span></div>
   </div>
+
+  {% if club.about or club.gold is not none %}
+    <div class="section-grid" style="margin-top:4px">
+      {% if club.about %}
+        <div class="card about-card"><h2 class="section-title" style="font-size:1.05rem">About</h2><p style="color:var(--fg-2);margin-top:8px">{{ club.about }}</p></div>
+      {% endif %}
+      {% if club.gold is not none %}
+        {% set mx = [club.gold or 0, club.silver or 0, club.bronze or 0] | max or 1 %}
+        <div class="card medal-cabinet">
+          <h2 class="section-title" style="font-size:1.05rem;margin-bottom:14px">Medal cabinet</h2>
+          <div class="medal-row"><span class="medal-lbl">🥇 Gold</span><span class="medal-bar"><span class="medal-fill gold" style="width:{{ (100 * (club.gold or 0) / mx) | round }}%"></span></span><span class="medal-n">{{ club.gold or 0 }}</span></div>
+          <div class="medal-row"><span class="medal-lbl">🥈 Silver</span><span class="medal-bar"><span class="medal-fill silver" style="width:{{ (100 * (club.silver or 0) / mx) | round }}%"></span></span><span class="medal-n">{{ club.silver or 0 }}</span></div>
+          <div class="medal-row"><span class="medal-lbl">🥉 Bronze</span><span class="medal-bar"><span class="medal-fill bronze" style="width:{{ (100 * (club.bronze or 0) / mx) | round }}%"></span></span><span class="medal-n">{{ club.bronze or 0 }}</span></div>
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
 
   <div class="section-grid" style="margin-top:4px">
     <div class="card" style="padding:0;overflow:hidden">
@@ -288,4 +268,8 @@
 
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ request.url_for('static', path='/js/pins.js') }}?v={{ asset_v }}" defer></script>
 {% endblock %}
